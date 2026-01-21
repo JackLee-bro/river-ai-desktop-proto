@@ -6,11 +6,24 @@ import { useEffect, useState } from "react";
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const pathname = usePathname();
+  const adminEmail = "riverai@naver.com";
 
   useEffect(() => {
     const stored = localStorage.getItem("demo-auth");
-    setIsLoggedIn(Boolean(stored));
+    if (!stored) {
+      setIsLoggedIn(false);
+      setIsAdmin(false);
+      return;
+    }
+    setIsLoggedIn(true);
+    try {
+      const parsed = JSON.parse(stored) as { email?: string };
+      setIsAdmin((parsed.email ?? "").toLowerCase() === adminEmail);
+    } catch {
+      setIsAdmin(false);
+    }
   }, [pathname]);
 
   return (
@@ -32,6 +45,11 @@ export default function Navbar() {
           <Link href="/journal" className="text-white">
             일지
           </Link>
+          {isAdmin ? (
+            <Link href="/admin" className="text-white">
+              관리자
+            </Link>
+          ) : null}
           {isLoggedIn ? (
             <Link href="/profile" className="text-white">
               내정보/로그아웃

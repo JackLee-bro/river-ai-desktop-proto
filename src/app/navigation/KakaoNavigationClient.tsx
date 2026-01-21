@@ -138,11 +138,11 @@ export default function KakaoNavigationClient() {
       prev.map((stop) =>
         stop.id === id
           ? {
-              ...stop,
-              keyword,
-              placeName: undefined,
-              position: undefined,
-            }
+            ...stop,
+            keyword,
+            placeName: undefined,
+            position: undefined,
+          }
           : stop,
       ),
     );
@@ -174,10 +174,10 @@ export default function KakaoNavigationClient() {
             prev.map((item) =>
               item.id === stop.id
                 ? {
-                    ...item,
-                    placeName: first.place_name,
-                    position: { lat, lng },
-                  }
+                  ...item,
+                  placeName: first.place_name,
+                  position: { lat, lng },
+                }
                 : item,
             ),
           );
@@ -209,10 +209,10 @@ export default function KakaoNavigationClient() {
         prev.map((item) =>
           item.id === stop.id
             ? {
-                ...item,
-                placeName: first.display_name,
-                position: { lat, lng },
-              }
+              ...item,
+              placeName: first.display_name,
+              position: { lat, lng },
+            }
             : item,
         ),
       );

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [adminNotice, setAdminNotice] = useState("");
   const router = useRouter();
+  const adminEmail = "riverai@naver.com";
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -19,15 +21,31 @@ export default function AuthPage() {
     if (isValid) {
       localStorage.setItem(
         "demo-auth",
-        JSON.stringify({ email, loggedInAt: new Date().toISOString() }),
+        JSON.stringify({
+          email,
+          role: email.trim().toLowerCase() === adminEmail ? "admin" : "user",
+          loggedInAt: new Date().toISOString(),
+        }),
       );
       setStatus("success");
-      router.push("/");
+      if (email.trim().toLowerCase() === adminEmail) {
+        router.push("/admin");
+      } else {
+        router.push("/");
+      }
       return;
     }
 
     setStatus("error");
   };
+
+  useEffect(() => {
+    const notice = sessionStorage.getItem("admin-auth-error");
+    if (notice) {
+      setAdminNotice(notice);
+      sessionStorage.removeItem("admin-auth-error");
+    }
+  }, []);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 sm:px-6 lg:px-10">
@@ -67,6 +85,11 @@ export default function AuthPage() {
           {status === "success" && (
             <p className="mt-3 text-xs font-semibold text-emerald-600">
               로그인 성공! 데모 세션이 저장되었습니다.
+            </p>
+          )}
+          {adminNotice && (
+            <p className="mt-3 text-xs font-semibold text-amber-600">
+              {adminNotice}
             </p>
           )}
           {status === "error" && (
