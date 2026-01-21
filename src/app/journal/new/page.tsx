@@ -103,7 +103,7 @@ export default function JournalFormPage() {
       // Ignore storage errors and proceed with navigation.
     }
     setShowSaved(true);
-    router.push("/journal");
+    router.push(`/journal/${newEntryId}`);
   };
 
   const handleAddFile = () => {
@@ -386,6 +386,7 @@ export default function JournalFormPage() {
               </button>
               <button
                 type="button"
+                onClick={() => router.back()}
                 className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600"
               >
                 취소
