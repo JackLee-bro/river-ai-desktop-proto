@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CircleMarker,
   MapContainer,
@@ -10,6 +11,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 
+import { stations } from "../_data/stations";
 type Stop = {
   id: string;
   keyword: string;
@@ -50,6 +52,7 @@ const loadKakaoMapScript = (appKey: string) =>
 export default function KakaoNavigationClient() {
   const appKey = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY ?? "";
   const hasKey = appKey.trim().length > 0;
+  const searchParams = useSearchParams();
   const [stops, setStops] = useState<Stop[]>([
     createStop("start"),
     createStop("end"),
@@ -75,6 +78,43 @@ export default function KakaoNavigationClient() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    const param = searchParams.get("stops");
+    if (!param) {
+      return;
+    }
+    const names = param
+      .split("|")
+      .map((value) => {
+        try {
+          return decodeURIComponent(value);
+        } catch {
+          return value;
+        }
+      })
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (names.length === 0) {
+      return;
+    }
+    const limited = names.slice(0, Math.max(0, MAX_STOPS - 1));
+    const startStop = createStop("start");
+    const nextStops = limited.map((name, index) => {
+      const matched = stations.find((station) => station.name === name);
+      const isLast = index === limited.length - 1;
+      return {
+        id: isLast ? "end" : `stop-${index}-${Date.now()}`,
+        keyword: name,
+        placeName: matched?.name ?? name,
+        position: matched
+          ? { lat: matched.coords[0], lng: matched.coords[1] }
+          : undefined,
+      } satisfies Stop;
+    });
+    setStops([startStop, ...nextStops]);
+    setActiveMessage("일지에서 선택한 경로를 불러왔습니다.");
+  }, [searchParams]);
 
   useEffect(() => {
     if (!hasKey) {

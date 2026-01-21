@@ -1,6 +1,7 @@
 import Link from "next/link";
 import MapView, { type MapPoint } from "../../_components/MapView";
 import { stations } from "../../_data/stations";
+import StationImageGallery from "./StationImageGallery";
 
 const statusTone: Record<string, string> = {
   정상: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -135,21 +136,7 @@ export default function StationDetailPage({
               이미지 {station.images.length}
             </p>
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {station.images.map((image, index) => (
-              <div
-                key={image.id}
-                className="group overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
-              >
-                <div className="flex h-32 items-center justify-center bg-gradient-to-br from-slate-200 via-slate-100 to-white text-sm font-semibold text-slate-500">
-                  IMAGE {index + 1}
-                </div>
-                <div className="px-3 py-2 text-sm font-semibold text-slate-700">
-                  {image.label}
-                </div>
-              </div>
-            ))}
-          </div>
+          <StationImageGallery images={station.images} />
         </section>
       </div>
     </main>

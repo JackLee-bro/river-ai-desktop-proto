@@ -1,17 +1,119 @@
+"use client";
+
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 import MapView, { type MapPoint } from "../../_components/MapView";
-import { journalEntries } from "../../_data/journals";
+import { journalEntries, type JournalEntry } from "../../_data/journals";
 import { stations } from "../../_data/stations";
 
-type PageProps = {
-  params: { id: string };
-};
+export default function JournalDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const rawId = params?.id;
+  const entryId =
+    typeof rawId === "string" ? rawId : Array.isArray(rawId) ? rawId[0] : "";
+  const [storedEntries, setStoredEntries] = useState<JournalEntry[]>([]);
+  const [isStorageLoaded, setIsStorageLoaded] = useState(false);
+  const [activePhoto, setActivePhoto] =
+    useState<JournalEntry["photos"][number] | null>(null);
+  const [isPhotoZoomed, setIsPhotoZoomed] = useState(false);
 
-export default function JournalDetailPage({ params }: PageProps) {
-  const entry =
-    journalEntries.find((item) => item.id === params.id) ??
-    journalEntries[0];
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("journalEntries");
+      if (!stored) {
+        setStoredEntries([]);
+        setIsStorageLoaded(true);
+        return;
+      }
+      const parsed = JSON.parse(stored) as JournalEntry[];
+      setStoredEntries(parsed);
+    } catch {
+      setStoredEntries([]);
+    } finally {
+      setIsStorageLoaded(true);
+    }
+  }, []);
+
+  const entry = useMemo(() => {
+    if (!entryId) {
+      return null;
+    }
+    const dummyEntry = journalEntries.find((item) => item.id === entryId);
+    if (dummyEntry) {
+      return dummyEntry;
+    }
+    const storedEntry = storedEntries.find((item) => item.id === entryId);
+    return storedEntry ?? null;
+  }, [entryId, storedEntries]);
+  const isStoredEntry = storedEntries.some((item) => item.id === entryId);
+
+  if (!entry) {
+    if (!isStorageLoaded || !entryId) {
+      return (
+        <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+            <header className="rounded-2xl bg-white p-5 shadow-sm">
+              <h1 className="text-2xl font-semibold text-slate-900">
+                일지를 불러오는 중입니다.
+              </h1>
+            </header>
+          </div>
+        </main>
+      );
+    }
+    return (
+      <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+          <header className="rounded-2xl bg-white p-5 shadow-sm">
+            <h1 className="text-2xl font-semibold text-slate-900">
+              일지를 찾을 수 없습니다.
+            </h1>
+          </header>
+          <Link
+            href="/journal"
+            className="w-fit rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600"
+          >
+            목록으로
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const handleDelete = () => {
+    if (!isStoredEntry) {
+      alert("더미 데이터는 삭제할 수 없습니다.");
+      return;
+    }
+    const confirmed = window.confirm("이 일지를 삭제할까요?");
+    if (!confirmed) {
+      return;
+    }
+    const nextEntries = storedEntries.filter(
+      (item) => item.id !== entryId,
+    );
+    try {
+      localStorage.setItem("journalEntries", JSON.stringify(nextEntries));
+    } catch {
+      // Ignore storage errors and proceed with navigation.
+    }
+    router.push("/journal");
+  };
+
+  const handleOpenNavigation = () => {
+    const stops = entry.stations ?? [];
+    if (stops.length === 0) {
+      alert("등록된 관측소가 없습니다.");
+      return;
+    }
+    const stopParam = stops
+      .map((name) => encodeURIComponent(name))
+      .join("|");
+    router.push(`/navigation?stops=${stopParam}`);
+  };
 
   const stationPoints: MapPoint[] = entry.stations
     .map((name) => {
@@ -32,28 +134,28 @@ export default function JournalDetailPage({ params }: PageProps) {
     <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
         <header className="rounded-2xl bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-            Journal
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-900">
+          <h1 className="text-3xl font-semibold text-slate-900">
             일지 상세
           </h1>
-          <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-600">
-            <span className="font-semibold text-slate-900">{entry.date}</span>
-            <span>작성자: {entry.author}</span>
-          </div>
         </header>
 
         <section className="grid gap-4 lg:grid-cols-[1.5fr_minmax(0,1fr)]">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              제목:{" "}
-              <span className="font-semibold text-slate-900">
-                {entry.title}
-              </span>
+              <div className="flex flex-wrap gap-3 text-sm text-slate-600">
+                <span className="font-semibold text-slate-900">
+                  {entry.date}
+                </span>
+                <span>작성자: {entry.author}</span>
+              </div>
+              <div className="mt-2 text-sm text-slate-600">
+                제목:{" "}
+                <span className="font-semibold text-slate-900">
+                  {entry.title}
+                </span>
+              </div>
             </div>
             <div className="mt-4 space-y-2 rounded-xl border border-slate-100 px-4 py-4 text-sm text-slate-700">
-              <p className="font-semibold text-slate-900">{entry.summary}</p>
               {entry.body.map((line) => (
                 <p key={line}>{line}</p>
               ))}
@@ -64,9 +166,18 @@ export default function JournalDetailPage({ params }: PageProps) {
                   key={photo.id}
                   className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
                 >
-                  <div className="flex h-24 items-center justify-center text-xs font-semibold text-slate-400">
-                    {photo.label}
-                  </div>
+                  {photo.url ? (
+                    <img
+                      src={photo.url}
+                      alt={photo.label}
+                      onClick={() => setActivePhoto(photo)}
+                      className="h-24 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-24 items-center justify-center text-xs font-semibold text-slate-400">
+                      {photo.label}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -78,14 +189,15 @@ export default function JournalDetailPage({ params }: PageProps) {
                 목록으로
               </Link>
               <Link
-                href="/journal/new"
+                href={`/journal/new?id=${entry.id}`}
                 className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
               >
                 수정
               </Link>
               <button
                 type="button"
-                className="rounded-full bg-rose-500 px-5 py-2 text-sm font-semibold text-white shadow-sm"
+                onClick={handleDelete}
+                className="rounded-full bg-rose-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-600"
               >
                 삭제
               </button>
@@ -123,6 +235,7 @@ export default function JournalDetailPage({ params }: PageProps) {
               </div>
               <button
                 type="button"
+                onClick={handleOpenNavigation}
                 className="mt-4 w-full rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
               >
                 경로 보기
@@ -135,10 +248,57 @@ export default function JournalDetailPage({ params }: PageProps) {
           </aside>
         </section>
       </div>
+      {activePhoto ? (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/70 p-4"
+          onClick={() => {
+            setActivePhoto(null);
+            setIsPhotoZoomed(false);
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-700">
+                {activePhoto.label}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setActivePhoto(null);
+                  setIsPhotoZoomed(false);
+                }}
+                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600"
+              >
+                닫기
+              </button>
+            </div>
+            {activePhoto.url ? (
+              <div className="max-h-[80vh] w-full overflow-auto bg-black/5">
+                <img
+                  src={activePhoto.url}
+                  alt={activePhoto.label}
+                  onClick={() => setIsPhotoZoomed((prev) => !prev)}
+                  className={
+                    isPhotoZoomed
+                      ? "h-auto w-full cursor-zoom-out select-none object-contain transition-transform"
+                      : "h-auto w-full cursor-zoom-in select-none object-contain transition-transform"
+                  }
+                  style={isPhotoZoomed ? { transform: "scale(1.6)" } : undefined}
+                />
+              </div>
+            ) : (
+              <div className="flex h-[60vh] items-center justify-center text-sm text-slate-500">
+                이미지를 표시할 수 없습니다.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </main>
   );
-}
-
-export async function generateStaticParams() {
-  return journalEntries.map((entry) => ({ id: entry.id }));
 }

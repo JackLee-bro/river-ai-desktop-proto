@@ -8,10 +8,53 @@ export type Station = {
   status: "정상" | "점검" | "통신 이상";
   updatedAt: string;
   coords: [number, number];
-  images: { id: string; label: string }[];
+  images: { id: string; label: string; url?: string }[];
 };
 
 export const stations: Station[] = [
+  {
+    id: "gimhae-jeongcheon",
+    name: "김해시 정천교",
+    address: "경상남도 김해시 불암동 533",
+    river: "낙동강",
+    manager: "김해 지점",
+    phone: "055-310-2200",
+    status: "정상",
+    updatedAt: "2025-03-20 11:30",
+    coords: [35.2432, 128.9118],
+    images: [
+      {
+        id: "jeongcheon-01",
+        label: "관측소 전경",
+        url: "/stations/gimhae-jeongcheon/image01.png",
+      },
+      {
+        id: "jeongcheon-02",
+        label: "수위계",
+        url: "/stations/gimhae-jeongcheon/image02.png",
+      },
+      {
+        id: "jeongcheon-03",
+        label: "교량 하부",
+        url: "/stations/gimhae-jeongcheon/image03.png",
+      },
+      {
+        id: "jeongcheon-04",
+        label: "센서 부착부",
+        url: "/stations/gimhae-jeongcheon/image04.png",
+      },
+      {
+        id: "jeongcheon-05",
+        label: "수문 시설",
+        url: "/stations/gimhae-jeongcheon/image05.png",
+      },
+      {
+        id: "jeongcheon-06",
+        label: "제어 패널",
+        url: "/stations/gimhae-jeongcheon/image06.png",
+      },
+    ],
+  },
   {
     id: "haeundae-01",
     name: "해운대 관측소",

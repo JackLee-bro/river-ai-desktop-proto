@@ -6,7 +6,7 @@ export type JournalEntry = {
   summary: string;
   body: string[];
   stations: string[];
-  photos: { id: string; label: string }[];
+  photos: { id: string; label: string; url?: string }[];
 };
 
 export const journalEntries: JournalEntry[] = [

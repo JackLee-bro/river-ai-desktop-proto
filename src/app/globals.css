@@ -25,3 +25,40 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.date-placeholder {
+  position: relative;
+}
+
+.date-placeholder-text {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+  font-size: 0.875rem;
+}
+
+.date-placeholder input:valid + .date-placeholder-text,
+.date-placeholder input:focus + .date-placeholder-text {
+  display: none;
+}
+
+.date-input:invalid {
+  color: transparent;
+}
+
+.date-input:focus,
+.date-input:valid {
+  color: #334155;
+}
+
+.date-input:invalid::-webkit-datetime-edit {
+  color: transparent;
+}
+
+.date-input:focus::-webkit-datetime-edit,
+.date-input:valid::-webkit-datetime-edit {
+  color: #334155;
+}

@@ -11,8 +11,20 @@ const statusTone: Record<string, string> = {
   "통신 이상": "bg-rose-50 text-rose-700 border-rose-200",
 };
 
+const stationCoverImages = [
+  "/stations/covers/image01.png",
+  "/stations/covers/image02.png",
+  "/stations/covers/image07.png",
+  "/stations/covers/image08.png",
+  "/stations/covers/image09.png",
+  "/stations/covers/image13.png",
+  "/stations/covers/image14.png",
+];
+
 export default function Home() {
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
 
   const filteredStations = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -23,6 +35,16 @@ export default function Home() {
       station.name.toLowerCase().includes(keyword),
     );
   }, [query]);
+  const pageCount = Math.max(
+    1,
+    Math.ceil(filteredStations.length / pageSize),
+  );
+  const currentPage = Math.min(page, pageCount);
+  const startIndex = (currentPage - 1) * pageSize;
+  const visibleStations = filteredStations.slice(
+    startIndex,
+    startIndex + pageSize,
+  );
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
@@ -44,7 +66,10 @@ export default function Home() {
                 type="text"
                 placeholder="관측소 검색"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 sm:w-96"
               />
               <button
@@ -61,8 +86,10 @@ export default function Home() {
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredStations.map((station, index) => {
+          {visibleStations.map((station, index) => {
             const stationCode = String(2022685 + index);
+            const coverImage =
+              stationCoverImages[index % stationCoverImages.length];
 
             return (
             <Link
@@ -80,8 +107,12 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-              <div className="mt-4 flex h-48 items-center justify-center rounded-2xl bg-slate-100 text-xs font-semibold text-slate-400">
-                이미지 영역
+              <div className="mt-4 h-48 overflow-hidden rounded-2xl bg-slate-100">
+                <img
+                  src={coverImage}
+                  alt={`${station.name} 표지`}
+                  className="h-full w-full object-cover"
+                />
               </div>
               <div className="mt-3 text-xs text-slate-500">
                 {station.address}
@@ -90,6 +121,47 @@ export default function Home() {
           );
           })}
         </section>
+
+        <footer className="rounded-2xl bg-slate-100 px-4 py-3 text-center text-xs text-slate-500">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              className="text-xs font-semibold text-slate-900 disabled:opacity-40"
+              disabled={currentPage === 1}
+            >
+              이전
+            </button>
+            {Array.from({ length: pageCount }, (_, index) => {
+              const pageNumber = index + 1;
+              const isActive = pageNumber === currentPage;
+              return (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setPage(pageNumber)}
+                  className={
+                    isActive
+                      ? "rounded-full bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white"
+                      : "rounded-full border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-900"
+                  }
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() =>
+                setPage((prev) => Math.min(pageCount, prev + 1))
+              }
+              className="text-xs font-semibold text-slate-900 disabled:opacity-40"
+              disabled={currentPage === pageCount}
+            >
+              다음
+            </button>
+          </div>
+        </footer>
       </div>
     </main>
   );

@@ -3,24 +3,44 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { journalEntries } from "../_data/journals";
+import { journalEntries, type JournalEntry } from "../_data/journals";
 
 export default function JournalPage() {
+  const [storedEntries, setStoredEntries] = useState<JournalEntry[]>([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("journalEntries");
+      if (!stored) {
+        setStoredEntries([]);
+        return;
+      }
+      const parsed = JSON.parse(stored) as JournalEntry[];
+      setStoredEntries(parsed);
+    } catch {
+      setStoredEntries([]);
+    }
+  }, []);
+
+  const combinedEntries = useMemo(() => {
+    const merged = [...storedEntries, ...journalEntries];
+    return merged.sort((a, b) => b.date.localeCompare(a.date));
+  }, [storedEntries]);
+
   const filteredEntries = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     if (!keyword) {
-      return journalEntries;
+      return combinedEntries;
     }
-    return journalEntries.filter((entry) =>
+    return combinedEntries.filter((entry) =>
       entry.title.toLowerCase().includes(keyword),
     );
-  }, [query]);
+  }, [combinedEntries, query]);
   const pageCount = Math.max(
     1,
     Math.ceil(filteredEntries.length / pageSize),
@@ -122,12 +142,14 @@ export default function JournalPage() {
             <span>작성자</span>
             <span>일자</span>
           </div>
-          {entries.map((entry) => (
+          {entries.map((entry, index) => (
             <div
               key={entry.id}
               className="grid grid-cols-[80px_minmax(0,1fr)_140px_140px] items-center border-b border-slate-100 px-4 py-3 text-sm text-slate-700 last:border-b-0"
             >
-              <span className="text-slate-500">{entry.id}</span>
+              <span className="text-slate-500">
+                {startIndex + index + 1}
+              </span>
               <Link
                 href={`/journal/${entry.id}?page=${currentPage}`}
                 className="font-medium text-slate-900 hover:underline"
