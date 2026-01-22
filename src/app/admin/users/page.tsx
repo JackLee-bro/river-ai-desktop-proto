@@ -1,6 +1,179 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+import {
+  defaultUsers,
+  readStoredUsers,
+  writeStoredUsers,
+  type AdminUser,
+} from "../../_data/usersStorage";
+
+type UserRole = AdminUser["role"];
+type UserStatus = AdminUser["status"];
+
+const roleOptions: UserRole[] = ["관리자", "일반"];
+const SUPER_ADMIN_EMAIL = "riverai@naver.com";
+const STATUS_ACTIVE: UserStatus = "활성";
+const STATUS_SUSPENDED: UserStatus = "정지";
+
 export default function AdminUsersPage() {
+  const [users, setUsers] = useState<AdminUser[]>(defaultUsers);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [pendingChange, setPendingChange] = useState<{
+    id: string;
+    nextRole: UserRole;
+  } | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    id: string;
+    nextStatus: UserStatus;
+  } | null>(null);
+  const [notice, setNotice] = useState("");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  const handleRoleChange = (id: string, role: UserRole) => {
+    setPendingChange({ id, nextRole: role });
+  };
+
+  useEffect(() => {
+    const stored = localStorage.getItem("demo-auth");
+    if (!stored) {
+      setIsSuperAdmin(false);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(stored) as { email?: string };
+      setIsSuperAdmin(
+        (parsed.email ?? "").toLowerCase() === SUPER_ADMIN_EMAIL,
+      );
+    } catch {
+      setIsSuperAdmin(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const storedUsers = readStoredUsers();
+    if (storedUsers.length > 0) {
+      setUsers(storedUsers);
+    } else {
+      writeStoredUsers(defaultUsers);
+    }
+    setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded) {
+      return;
+    }
+    writeStoredUsers(users);
+  }, [isLoaded, users]);
+
+  useEffect(() => {
+    if (!notice) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setNotice("");
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  const filteredUsers = useMemo(() => {
+    const normalized = searchTerm.trim().toLowerCase();
+    const list = users.filter((user) => {
+      if (!normalized) {
+        return true;
+      }
+      return (
+        user.email.toLowerCase().includes(normalized) ||
+        user.name.toLowerCase().includes(normalized)
+      );
+    });
+    const superIndex = list.findIndex(
+      (user) => user.email.toLowerCase() === SUPER_ADMIN_EMAIL,
+    );
+    if (superIndex < 0) {
+      return list;
+    }
+    const superUser = list[superIndex];
+    return [
+      superUser,
+      ...list.filter((user) => user !== superUser),
+    ];
+  }, [searchTerm, users]);
+
+  const pendingUser = useMemo(() => {
+    if (!pendingChange) {
+      return null;
+    }
+    return users.find((user) => user.id === pendingChange.id) ?? null;
+  }, [pendingChange, users]);
+
+  const pendingStatusUser = useMemo(() => {
+    if (!pendingStatusChange) {
+      return null;
+    }
+    return (
+      users.find((user) => user.id === pendingStatusChange.id) ??
+      null
+    );
+  }, [pendingStatusChange, users]);
+
+  const confirmChange = () => {
+    if (!pendingChange || !pendingUser) {
+      setPendingChange(null);
+      return;
+    }
+    const toRole = pendingChange.nextRole;
+    setUsers((prev) =>
+      prev.map((user) =>
+        user.id === pendingChange.id ? { ...user, role: toRole } : user,
+      ),
+    );
+    setPendingChange(null);
+    setNotice("변경되었습니다.");
+  };
+
+  const toggleStatus = (id: string) => {
+    if (!isSuperAdmin) {
+      return;
+    }
+    const target = users.find((user) => user.id === id);
+    if (!target) {
+      return;
+    }
+    const nextStatus =
+      target.status === STATUS_ACTIVE
+        ? STATUS_SUSPENDED
+        : STATUS_ACTIVE;
+    setPendingStatusChange({ id, nextStatus });
+  };
+
+  const confirmStatusChange = () => {
+    if (!pendingStatusChange || !pendingStatusUser) {
+      setPendingStatusChange(null);
+      return;
+    }
+    const { id, nextStatus } = pendingStatusChange;
+    setUsers((prev) =>
+      prev.map((user) =>
+        user.id === id
+          ? { ...user, status: nextStatus }
+          : user,
+      ),
+    );
+    setPendingStatusChange(null);
+    setNotice("변경되었습니다.");
+  };
+
   return (
     <main className="flex flex-col gap-6">
+      {notice ? (
+        <div className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-lg">
+          {notice}
+        </div>
+      ) : null}
       <header className="rounded-2xl bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">
           사용자 관리
@@ -11,42 +184,177 @@ export default function AdminUsersPage() {
       </header>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <form
+          className="flex flex-wrap items-center justify-between gap-3"
+          onSubmit={(event) => event.preventDefault()}
+        >
           <input
             type="text"
             placeholder="이메일/이름 검색"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
             className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 sm:w-72"
           />
           <button
-            type="button"
+            type="submit"
             className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white"
           >
-            사용자 초대
+            검색
           </button>
-        </div>
+        </form>
 
         <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
-          <div className="grid grid-cols-[160px_minmax(0,1fr)_120px_120px] border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <div className="grid grid-cols-[220px_minmax(0,1fr)_140px_120px] gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
             <span>이메일</span>
             <span>이름</span>
             <span>권한</span>
             <span>상태</span>
           </div>
-          {Array.from({ length: 4 }, (_, index) => (
+          {filteredUsers.map((user) => (
             <div
-              key={`user-${index}`}
-              className="grid grid-cols-[160px_minmax(0,1fr)_120px_120px] items-center border-b border-slate-100 px-4 py-3 text-sm text-slate-700 last:border-b-0"
+              key={user.id}
+              className="grid grid-cols-[220px_minmax(0,1fr)_140px_120px] items-center gap-2 border-b border-slate-100 px-4 py-3 text-sm text-slate-700 last:border-b-0"
             >
-              <span className="font-medium text-slate-900">
-                admin{index}@sample.com
+              <span className="truncate font-medium text-slate-900">
+                {user.email}
               </span>
-              <span className="text-slate-500">관리자</span>
-              <span className="text-slate-500">관리자</span>
-              <span className="text-emerald-600">활성</span>
+              <span className="truncate text-slate-500">{user.name}</span>
+              <span>
+                {user.email.toLowerCase() === SUPER_ADMIN_EMAIL ? (
+                  <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    슈퍼관리자
+                  </span>
+                ) : (
+                  <select
+                    value={user.role}
+                    onChange={(event) =>
+                      handleRoleChange(
+                        user.id,
+                        event.currentTarget.value as UserRole,
+                      )
+                    }
+                    disabled={!isSuperAdmin}
+                    className="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                  >
+                    {roleOptions.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </span>
+              <span>
+                <button
+                  type="button"
+                  onClick={() => toggleStatus(user.id)}
+                  disabled={!isSuperAdmin}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed ${
+                    user.status === STATUS_ACTIVE
+                      ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                      : "bg-rose-50 text-rose-600 hover:bg-rose-100"
+                  } disabled:bg-slate-100 disabled:text-slate-400`}
+                >
+                  {user.status}
+                </button>
+              </span>
             </div>
           ))}
         </div>
+        <p className="mt-3 text-xs text-slate-400">
+          슈퍼관리자만 권한을 변경할 수 있습니다.
+        </p>
       </section>
+
+      {pendingChange && pendingUser ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">
+              권한 변경 확인
+            </h3>
+            <p className="mt-3 text-sm text-slate-600">
+              {pendingUser.name} ({pendingUser.email})의 권한을
+              <span className="font-semibold text-slate-900">
+                {" "}
+                {pendingUser.role}
+              </span>
+              에서
+              <span className="font-semibold text-slate-900">
+                {" "}
+                {pendingChange.nextRole}
+              </span>
+              (으)로 변경할까요?
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600"
+                onClick={() => setPendingChange(null)}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white"
+                onClick={confirmChange}
+              >
+                변경하기
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {pendingStatusChange && pendingStatusUser ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">
+              상태 변경 확인
+            </h3>
+            <p className="mt-3 text-sm text-slate-600">
+              {pendingStatusUser.name} ({pendingStatusUser.email})의
+              상태를
+              <span
+                className={`font-semibold ${
+                  pendingStatusUser.status === STATUS_ACTIVE
+                    ? "text-emerald-600"
+                    : "text-rose-600"
+                }`}
+              >
+                {" "}
+                {pendingStatusUser.status}
+              </span>
+              에서
+              <span
+                className={`font-semibold ${
+                  pendingStatusChange.nextStatus === STATUS_ACTIVE
+                    ? "text-emerald-600"
+                    : "text-rose-600"
+                }`}
+              >
+                {" "}
+                {pendingStatusChange.nextStatus}
+              </span>
+              (으)로 변경할까요?
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600"
+                onClick={() => setPendingStatusChange(null)}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white"
+                onClick={confirmStatusChange}
+              >
+                변경하기
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

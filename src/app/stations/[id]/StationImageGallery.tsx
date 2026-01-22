@@ -29,7 +29,7 @@ export default function StationImageGallery({ images }: StationImageGalleryProps
             {image.url ? (
               <img
                 src={image.url}
-                alt={image.label}
+                alt="관측소 사진"
                 className="h-32 w-full object-cover"
               />
             ) : (
@@ -37,9 +37,6 @@ export default function StationImageGallery({ images }: StationImageGalleryProps
                 IMAGE {index + 1}
               </div>
             )}
-            <div className="px-3 py-2 text-sm font-semibold text-slate-700">
-              {image.label}
-            </div>
           </button>
         ))}
       </div>
@@ -58,10 +55,7 @@ export default function StationImageGallery({ images }: StationImageGalleryProps
             className="relative w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <p className="text-sm font-semibold text-slate-700">
-                {activeImage.label}
-              </p>
+            <div className="flex justify-end border-b border-slate-200 px-4 py-3">
               <button
                 type="button"
                 onClick={() => {
@@ -77,7 +71,7 @@ export default function StationImageGallery({ images }: StationImageGalleryProps
               <div className="max-h-[80vh] w-full overflow-auto bg-black/5">
                 <img
                   src={activeImage.url}
-                  alt={activeImage.label}
+                  alt="관측소 사진"
                   onClick={() => setIsZoomed((prev) => !prev)}
                   className={
                     isZoomed

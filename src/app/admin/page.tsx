@@ -1,11 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import { stations } from "../_data/stations";
+import {
+  mergeStations,
+  readStoredStations,
+} from "../_data/stationsStorage";
+import {
+  defaultUsers,
+  readStoredUsers,
+} from "../_data/usersStorage";
 
 const quickLinks = [
-  {
-    title: "일지 관리",
-    description: "일지 목록/검색/삭제/수정",
-    href: "/admin/journals",
-  },
   {
     title: "관측소 관리",
     description: "관측소 정보 및 사진 관리",
@@ -19,6 +27,42 @@ const quickLinks = [
 ];
 
 export default function AdminDashboardPage() {
+  const [stationCount, setStationCount] = useState(stations.length);
+  const [userCount, setUserCount] = useState(defaultUsers.length);
+
+  const refreshCounts = () => {
+    const storedStations = readStoredStations();
+    const mergedStations = mergeStations(stations, storedStations);
+    setStationCount(mergedStations.length);
+    const storedUsers = readStoredUsers();
+    setUserCount(
+      storedUsers.length > 0 ? storedUsers.length : defaultUsers.length,
+    );
+  };
+
+  useEffect(() => {
+    refreshCounts();
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === "demo-stations" ||
+        event.key === "demo-stations-deleted" ||
+        event.key === "demo-users"
+      ) {
+        refreshCounts();
+      }
+    };
+    const handleStationsUpdated = () => refreshCounts();
+    const handleUsersUpdated = () => refreshCounts();
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("stations-updated", handleStationsUpdated);
+    window.addEventListener("users-updated", handleUsersUpdated);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("stations-updated", handleStationsUpdated);
+      window.removeEventListener("users-updated", handleUsersUpdated);
+    };
+  }, []);
+
   return (
     <main className="flex flex-col gap-6">
       <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -47,13 +91,12 @@ export default function AdminDashboardPage() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold text-slate-900">
-          오늘의 요약
+          현황
         </h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {[
-            { label: "신규 일지", value: "12" },
-            { label: "점검 필요 관측소", value: "3" },
-            { label: "활성 사용자", value: "27" },
+            { label: "관측소 개수", value: String(stationCount) },
+            { label: "사용자 수", value: String(userCount) },
           ].map((item) => (
             <div
               key={item.label}

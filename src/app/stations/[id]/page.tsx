@@ -1,46 +1,63 @@
+"use client";
+
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+
 import MapView, { type MapPoint } from "../../_components/MapView";
-import { stations } from "../../_data/stations";
+import { stations, type Station } from "../../_data/stations";
+import {
+  mergeStations,
+  readStoredStations,
+} from "../../_data/stationsStorage";
 import StationImageGallery from "./StationImageGallery";
 
-const statusTone: Record<string, string> = {
-  정상: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  점검: "bg-amber-50 text-amber-700 border-amber-200",
-  "통신 이상": "bg-rose-50 text-rose-700 border-rose-200",
-};
+const createFallbackStation = (id: string): Station => ({
+  id,
+  name: "임시 관측소",
+  address: "더미 데이터입니다.",
+  river: "미정",
+  manager: "미정",
+  phone: "000-0000-0000",
+  updatedAt: "2025-03-20 00:00",
+  coords: [35.1796, 129.0756],
+  images: [
+    { id: "overview", label: "관측소 전경" },
+    { id: "equipment", label: "장비 상태" },
+    { id: "sensor", label: "센서 부착부" },
+  ],
+});
 
-export default function StationDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const station =
-    stations.find((item) => item.id === params.id) ??
-    (stations.length > 0
-      ? {
-          ...stations[0],
-          id: params.id,
-          name: "임시 관측소",
-          address: "더미 데이터입니다.",
-          status: "점검" as const,
-          updatedAt: "2025-03-20 00:00",
-        }
-      : {
-          id: params.id,
-          name: "임시 관측소",
-          address: "더미 데이터입니다.",
-          river: "미정",
-          manager: "미정",
-          phone: "000-0000-0000",
-          status: "점검" as const,
-          updatedAt: "2025-03-20 00:00",
-          coords: [35.1796, 129.0756] as [number, number],
-          images: [
-            { id: "overview", label: "관측소 전경" },
-            { id: "equipment", label: "장비 상태" },
-            { id: "sensor", label: "센서 부착부" },
-          ],
-        });
+export default function StationDetailPage() {
+  const params = useParams();
+  const stationId = Array.isArray(params?.id)
+    ? params?.id[0]
+    : params?.id;
+  const [mergedStations, setMergedStations] =
+    useState<Station[]>(stations);
+
+  useEffect(() => {
+    const stored = readStoredStations();
+    setMergedStations(mergeStations(stations, stored));
+  }, []);
+
+  const station = useMemo(() => {
+    const id = stationId ?? "temp-station";
+    const found = mergedStations.find((item) => item.id === id);
+    if (found) {
+      return found;
+    }
+    if (stations.length > 0) {
+      return {
+        ...stations[0],
+        id,
+        name: "임시 관측소",
+        address: "더미 데이터입니다.",
+        updatedAt: "2025-03-20 00:00",
+      };
+    }
+    return createFallbackStation(id);
+  }, [mergedStations, stationId]);
 
   const points: MapPoint[] = [
     {
@@ -51,28 +68,45 @@ export default function StationDetailPage({
     },
   ];
   const infoItems: Array<{ label: string; value: string }> = [
-    { label: "코드번호", value: "2022685" },
+    { label: "코드번호", value: station.codeNumber ?? "2022685" },
     { label: "관측소명", value: station.name },
     {
       label: "관측소명(영문)",
-      value: (station.id ?? "TEMP").toString().replace(/-/g, " ").toUpperCase(),
+      value:
+        station.nameEn ??
+        (station.id ?? "TEMP")
+          .toString()
+          .replace(/-/g, " ")
+          .toUpperCase(),
     },
     { label: "주소", value: station.address },
-    { label: "수계명", value: "낙동강권" },
+    { label: "수계명", value: station.basinName ?? "낙동강권" },
     { label: "하천명", value: station.river },
-    { label: "하구합류점부터 거리(km)", value: "12.4" },
-    { label: "관측개시일", value: "2018-05-12" },
-    { label: "관측방법", value: "레이더" },
-    { label: "전송방법", value: "LTE" },
+    {
+      label: "하구합류점부터 거리(km)",
+      value: station.distanceFromMouthKm ?? "12.4",
+    },
+    { label: "관측개시일", value: station.startDate ?? "2018-05-12" },
+    { label: "관측방법", value: station.observationMethod ?? "레이더" },
+    { label: "전송방법", value: station.transferMethod ?? "LTE" },
     { label: "위도(WGS84)", value: station.coords[0].toFixed(6) },
     { label: "경도(WGS84)", value: station.coords[1].toFixed(6) },
-    { label: "수위표 영점표고(m)", value: "4.25" },
-    { label: "수준거 표고(m)", value: "6.10" },
-    { label: "수위표 최고득수(m)", value: "7.80" },
-    { label: "유역면적(km²)", value: "43.7" },
-    { label: "조석영향", value: "없음" },
-    { label: "유량측정", value: "월 1회" },
-    { label: "비고", value: "정상 운영" },
+    {
+      label: "수위표 영점표고(m)",
+      value: station.zeroElevation ?? "4.25",
+    },
+    {
+      label: "수준거 표고(m)",
+      value: station.benchmarkElevation ?? "6.10",
+    },
+    {
+      label: "수위표 최고득수(m)",
+      value: station.maxStage ?? "7.80",
+    },
+    { label: "유역면적(km²)", value: station.basinArea ?? "43.7" },
+    { label: "조석영향", value: station.tideInfluence ?? "없음" },
+    { label: "유량측정", value: station.flowMeasurement ?? "월 1회" },
+    { label: "비고", value: station.note ?? "운영중" },
   ];
   const infoPairs = Array.from(
     { length: Math.ceil(infoItems.length / 2) },
@@ -130,7 +164,7 @@ export default function StationDetailPage({
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-slate-900">
-              관측소 시설
+              관측소 사진
             </h2>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
               이미지 {station.images.length}
@@ -141,8 +175,4 @@ export default function StationDetailPage({
       </div>
     </main>
   );
-}
-
-export async function generateStaticParams() {
-  return stations.map((station) => ({ id: station.id }));
 }

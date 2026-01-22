@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { defaultUsers, readStoredUsers } from "../_data/usersStorage";
+
 type AdminGateProps = {
   children: React.ReactNode;
 };
@@ -17,18 +19,40 @@ export default function AdminGate({ children }: AdminGateProps) {
   useEffect(() => {
     try {
       const stored = localStorage.getItem("demo-auth");
-      const parsed = stored ? (JSON.parse(stored) as { email?: string }) : null;
+      const parsed = stored
+        ? (JSON.parse(stored) as { email?: string; role?: string })
+        : null;
       const email = parsed?.email?.toLowerCase() ?? "";
-      if (email === ADMIN_EMAIL) {
-        setIsAllowed(true);
-      } else {
+      if (!email) {
         setIsAllowed(false);
         sessionStorage.setItem(
           "admin-auth-error",
           "관리자 권한이 필요합니다. 관리자 계정으로 로그인해주세요.",
         );
         router.replace("/auth");
+        return;
       }
+      if (email === ADMIN_EMAIL) {
+        setIsAllowed(true);
+        return;
+      }
+      const storedUsers = readStoredUsers();
+      const baseUsers =
+        storedUsers.length > 0 ? storedUsers : defaultUsers;
+      const matched = baseUsers.find(
+        (user) => user.email.toLowerCase() === email,
+      );
+      const role = matched?.role ?? parsed?.role ?? "";
+      if (role === "관리자") {
+        setIsAllowed(true);
+        return;
+      }
+      setIsAllowed(false);
+      sessionStorage.setItem(
+        "admin-auth-error",
+        "관리자 권한이 필요합니다. 관리자 계정으로 로그인해주세요.",
+      );
+      router.replace("/auth");
     } catch {
       setIsAllowed(false);
       sessionStorage.setItem(

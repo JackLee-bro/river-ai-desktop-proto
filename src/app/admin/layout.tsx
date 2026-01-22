@@ -4,10 +4,8 @@ import AdminGate from "./AdminGate";
 
 const adminLinks = [
   { href: "/admin", label: "대시보드" },
-  { href: "/admin/journals", label: "일지 관리" },
   { href: "/admin/stations", label: "관측소 관리" },
   { href: "/admin/users", label: "사용자 관리" },
-  { href: "/admin/settings", label: "설정" },
 ];
 
 export default function AdminLayout({
@@ -34,10 +32,7 @@ export default function AdminLayout({
           <div className="flex w-full gap-6">
           <aside className="hidden w-60 flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:flex">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-                Admin
-              </p>
-              <h2 className="mt-2 text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-slate-900">
                 관리자 메뉴
               </h2>
             </div>

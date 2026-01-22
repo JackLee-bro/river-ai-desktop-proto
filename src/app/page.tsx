@@ -1,15 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { stations } from "./_data/stations";
-
-const statusTone: Record<string, string> = {
-  정상: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  점검: "bg-amber-50 text-amber-700 border-amber-200",
-  "통신 이상": "bg-rose-50 text-rose-700 border-rose-200",
-};
+import {
+  mergeStations,
+  readStoredStations,
+} from "./_data/stationsStorage";
 
 const stationCoverImages = [
   "/stations/covers/image01.png",
@@ -24,17 +22,23 @@ const stationCoverImages = [
 export default function Home() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [storedStations, setStoredStations] = useState(stations);
   const pageSize = 6;
+
+  useEffect(() => {
+    const stored = readStoredStations();
+    setStoredStations(mergeStations(stations, stored));
+  }, []);
 
   const filteredStations = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     if (!keyword) {
-      return stations;
+      return storedStations;
     }
-    return stations.filter((station) =>
+    return storedStations.filter((station) =>
       station.name.toLowerCase().includes(keyword),
     );
-  }, [query]);
+  }, [query, storedStations]);
   const pageCount = Math.max(
     1,
     Math.ceil(filteredStations.length / pageSize),
@@ -52,7 +56,7 @@ export default function Home() {
         <header className="rounded-2xl bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="mt-2 text-3xl font-semibold text-slate-900 sm:text-4xl">
+              <h1 className="text-3xl font-semibold text-slate-900">
                 관측소 현황
               </h1>
             </div>
@@ -88,8 +92,11 @@ export default function Home() {
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleStations.map((station, index) => {
             const stationCode = String(2022685 + index);
-            const coverImage =
+            const fallbackImage =
               stationCoverImages[index % stationCoverImages.length];
+            const coverImage =
+              station.images.find((image) => image.url)?.url ??
+              fallbackImage;
 
             return (
             <Link
@@ -107,15 +114,15 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-              <div className="mt-4 h-48 overflow-hidden rounded-2xl bg-slate-100">
+              <div className="relative mt-4 h-48 overflow-hidden rounded-2xl bg-slate-100">
                 <img
                   src={coverImage}
                   alt={`${station.name} 표지`}
                   className="h-full w-full object-cover"
                 />
-              </div>
-              <div className="mt-3 text-xs text-slate-500">
-                {station.address}
+                <span className="absolute left-4 top-4 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-700">
+                  대표 이미지
+                </span>
               </div>
             </Link>
           );

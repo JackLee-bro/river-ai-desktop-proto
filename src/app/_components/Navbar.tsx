@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+import { defaultUsers, readStoredUsers } from "../_data/usersStorage";
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const pathname = usePathname();
-  const adminEmail = "riverai@naver.com";
+  const router = useRouter();
+  const superAdminEmail = "riverai@naver.com";
 
   useEffect(() => {
     const stored = localStorage.getItem("demo-auth");
@@ -19,12 +22,38 @@ export default function Navbar() {
     }
     setIsLoggedIn(true);
     try {
-      const parsed = JSON.parse(stored) as { email?: string };
-      setIsAdmin((parsed.email ?? "").toLowerCase() === adminEmail);
+      const parsed = JSON.parse(stored) as {
+        email?: string;
+        role?: string;
+      };
+      const email = (parsed.email ?? "").toLowerCase();
+      if (!email) {
+        setIsAdmin(false);
+        return;
+      }
+      if (email === superAdminEmail) {
+        setIsAdmin(true);
+        return;
+      }
+      const storedUsers = readStoredUsers();
+      const baseUsers =
+        storedUsers.length > 0 ? storedUsers : defaultUsers;
+      const matched = baseUsers.find(
+        (user) => user.email.toLowerCase() === email,
+      );
+      const role = matched?.role ?? parsed.role ?? "";
+      setIsAdmin(role === "관리자");
     } catch {
       setIsAdmin(false);
     }
   }, [pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("demo-auth");
+    setIsLoggedIn(false);
+    setIsAdmin(false);
+    router.push("/");
+  };
 
   return (
     <header className="border-b border-blue-700 bg-blue-600">
@@ -51,9 +80,14 @@ export default function Navbar() {
             </Link>
           ) : null}
           {isLoggedIn ? (
-            <Link href="/profile" className="text-white">
-              내정보/로그아웃
-            </Link>
+            <>
+              <Link href="/profile" className="text-white">
+                내정보
+              </Link>
+              <button type="button" onClick={handleLogout} className="text-white">
+                로그아웃
+              </button>
+            </>
           ) : (
             <Link href="/auth" className="text-white">
               로그인/회원가입

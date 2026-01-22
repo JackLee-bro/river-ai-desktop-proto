@@ -1,13 +1,26 @@
 export type Station = {
   id: string;
+  codeNumber?: string;
   name: string;
+  nameEn?: string;
   address: string;
+  basinName?: string;
   river: string;
   manager: string;
   phone: string;
-  status: "정상" | "점검" | "통신 이상";
+  distanceFromMouthKm?: string;
+  startDate?: string;
+  observationMethod?: string;
+  transferMethod?: string;
   updatedAt: string;
   coords: [number, number];
+  zeroElevation?: string;
+  benchmarkElevation?: string;
+  maxStage?: string;
+  basinArea?: string;
+  tideInfluence?: string;
+  flowMeasurement?: string;
+  note?: string;
   images: { id: string; label: string; url?: string }[];
 };
 
@@ -19,7 +32,6 @@ export const stations: Station[] = [
     river: "낙동강",
     manager: "김해 지점",
     phone: "055-310-2200",
-    status: "정상",
     updatedAt: "2025-03-20 11:30",
     coords: [35.2432, 128.9118],
     images: [
@@ -62,7 +74,6 @@ export const stations: Station[] = [
     river: "수영강",
     manager: "해운대 지점",
     phone: "051-410-2024",
-    status: "정상",
     updatedAt: "2025-03-20 10:12",
     coords: [35.1631, 129.1635],
     images: [
@@ -81,7 +92,6 @@ export const stations: Station[] = [
     river: "수영강",
     manager: "수영 지점",
     phone: "051-210-4221",
-    status: "정상",
     updatedAt: "2025-03-20 09:45",
     coords: [35.1534, 129.1193],
     images: [
@@ -100,7 +110,6 @@ export const stations: Station[] = [
     river: "낙동강",
     manager: "사상 지점",
     phone: "051-410-7440",
-    status: "점검",
     updatedAt: "2025-03-19 18:10",
     coords: [35.1627, 128.9823],
     images: [
@@ -119,7 +128,6 @@ export const stations: Station[] = [
     river: "낙동강",
     manager: "강서 지점",
     phone: "051-230-1155",
-    status: "정상",
     updatedAt: "2025-03-20 08:30",
     coords: [35.2093, 128.9719],
     images: [
@@ -138,7 +146,6 @@ export const stations: Station[] = [
     river: "일광천",
     manager: "기장 지점",
     phone: "051-981-1820",
-    status: "통신 이상",
     updatedAt: "2025-03-19 23:05",
     coords: [35.2444, 129.2226],
     images: [
@@ -157,7 +164,6 @@ export const stations: Station[] = [
     river: "수영강",
     manager: "남구 지점",
     phone: "051-440-7720",
-    status: "정상",
     updatedAt: "2025-03-20 11:02",
     coords: [35.1365, 129.0829],
     images: [

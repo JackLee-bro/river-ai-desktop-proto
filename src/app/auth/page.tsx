@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+import { defaultUsers, readStoredUsers } from "../_data/usersStorage";
 
 export default function AuthPage() {
   const [email, setEmail] = useState("");
@@ -14,21 +17,32 @@ export default function AuthPage() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const isValid =
-      email.trim().toLowerCase() === "riverai@naver.com" &&
-      password === "123qwe";
+    const trimmedEmail = email.trim().toLowerCase();
+    const isAdminLogin =
+      trimmedEmail === adminEmail && password === "123qwe";
+    const storedUsers = readStoredUsers();
+    const baseUsers =
+      storedUsers.length > 0 ? storedUsers : defaultUsers;
+    const matchedUser = baseUsers.find(
+      (user) => user.email.toLowerCase() === trimmedEmail,
+    );
+    const isStoredValid =
+      matchedUser && matchedUser.password === password;
 
-    if (isValid) {
+    if (isAdminLogin || isStoredValid) {
+      const role = isAdminLogin
+        ? "관리자"
+        : matchedUser?.role ?? "일반";
       localStorage.setItem(
         "demo-auth",
         JSON.stringify({
           email,
-          role: email.trim().toLowerCase() === adminEmail ? "admin" : "user",
+          role,
           loggedInAt: new Date().toISOString(),
         }),
       );
       setStatus("success");
-      if (email.trim().toLowerCase() === adminEmail) {
+      if (role === "관리자") {
         router.push("/admin");
       } else {
         router.push("/");
@@ -103,7 +117,9 @@ export default function AuthPage() {
             <span className="text-slate-300">|</span>
             <span className="cursor-not-allowed">암호 찾기</span>
             <span className="text-slate-300">|</span>
-            <span className="cursor-not-allowed">회원가입</span>
+            <Link href="/signup" className="text-slate-600 hover:text-slate-900">
+              회원가입
+            </Link>
           </div>
         </div>
       </div>
