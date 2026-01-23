@@ -7,6 +7,7 @@ import MapView, { type MapPoint } from "../../_components/MapView";
 import { journalEntries, type JournalEntry } from "../../_data/journals";
 import { stations } from "../../_data/stations";
 
+const STORAGE_KEY = "journalEntries";
 const defaultLocations = ["해운대 관측소", "수영 관측소", "강서 관측소"];
 
 export default function JournalFormPage() {
@@ -93,12 +94,13 @@ export default function JournalFormPage() {
       photos: [...existingPhotos, ...photoEntries],
     };
     try {
-      const stored = localStorage.getItem("journalEntries");
+      // TODO: replace with API call when available.
+      const stored = localStorage.getItem(STORAGE_KEY);
       const parsed = stored ? (JSON.parse(stored) as JournalEntry[]) : [];
       const nextEntries = shouldUpdateStored
         ? parsed.map((entry) => (entry.id === newEntryId ? newEntry : entry))
         : [newEntry, ...parsed];
-      localStorage.setItem("journalEntries", JSON.stringify(nextEntries));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextEntries));
     } catch {
       // Ignore storage errors and proceed with navigation.
     }
@@ -178,7 +180,8 @@ export default function JournalFormPage() {
     }
     let storedEntries: JournalEntry[] = [];
     try {
-      const stored = localStorage.getItem("journalEntries");
+      // TODO: replace with API call when available.
+      const stored = localStorage.getItem(STORAGE_KEY);
       storedEntries = stored ? (JSON.parse(stored) as JournalEntry[]) : [];
     } catch {
       storedEntries = [];

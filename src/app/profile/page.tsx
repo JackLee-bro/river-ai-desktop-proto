@@ -9,6 +9,8 @@ import {
   writeStoredUsers,
 } from "../_data/usersStorage";
 
+const AUTH_STORAGE_KEY = "demo-auth";
+
 type Profile = {
   name: string;
   team: string;
@@ -40,7 +42,8 @@ export default function ProfilePage() {
   const router = useRouter();
 
   const loadProfile = () => {
-    const stored = localStorage.getItem("demo-auth");
+    // TODO: replace with API auth session when available.
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
     if (!stored) {
       return;
     }
@@ -155,7 +158,7 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("demo-auth");
+    localStorage.removeItem(AUTH_STORAGE_KEY);
     setLogoutStatus("showing");
     setTimeout(() => {
       setLogoutStatus("done");

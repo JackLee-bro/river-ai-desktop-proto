@@ -16,6 +16,11 @@ export default function StationImageGallery({ images }: StationImageGalleryProps
   const [activeImage, setActiveImage] = useState<StationImage | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
 
+  const handleClose = () => {
+    setActiveImage(null);
+    setIsZoomed(false);
+  };
+
   return (
     <>
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -44,10 +49,7 @@ export default function StationImageGallery({ images }: StationImageGalleryProps
       {activeImage ? (
         <div
           className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/70 p-4"
-          onClick={() => {
-            setActiveImage(null);
-            setIsZoomed(false);
-          }}
+          onClick={handleClose}
           role="dialog"
           aria-modal="true"
         >
@@ -58,10 +60,7 @@ export default function StationImageGallery({ images }: StationImageGalleryProps
             <div className="flex justify-end border-b border-slate-200 px-4 py-3">
               <button
                 type="button"
-                onClick={() => {
-                  setActiveImage(null);
-                  setIsZoomed(false);
-                }}
+                onClick={handleClose}
                 className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600"
               >
                 닫기

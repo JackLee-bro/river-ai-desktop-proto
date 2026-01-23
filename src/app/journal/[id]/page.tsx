@@ -21,20 +21,23 @@ export default function JournalDetailPage() {
   const [isPhotoZoomed, setIsPhotoZoomed] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("journalEntries");
-      if (!stored) {
+    const loadEntries = async () => {
+      // TODO: replace with API call when available.
+      try {
+        const stored = localStorage.getItem("journalEntries");
+        if (!stored) {
+          setStoredEntries([]);
+          return;
+        }
+        const parsed = JSON.parse(stored) as JournalEntry[];
+        setStoredEntries(parsed);
+      } catch {
         setStoredEntries([]);
+      } finally {
         setIsStorageLoaded(true);
-        return;
       }
-      const parsed = JSON.parse(stored) as JournalEntry[];
-      setStoredEntries(parsed);
-    } catch {
-      setStoredEntries([]);
-    } finally {
-      setIsStorageLoaded(true);
-    }
+    };
+    void loadEntries();
   }, []);
 
   const entry = useMemo(() => {
@@ -49,6 +52,64 @@ export default function JournalDetailPage() {
     return storedEntry ?? null;
   }, [entryId, storedEntries]);
   const isStoredEntry = storedEntries.some((item) => item.id === entryId);
+
+  const handleDelete = () => {
+    if (!isStoredEntry) {
+      alert("더미 데이터는 삭제할 수 없습니다.");
+      return;
+    }
+    const confirmed = window.confirm("이 일지를 삭제할까요?");
+    if (!confirmed) {
+      return;
+    }
+    const nextEntries = storedEntries.filter(
+      (item) => item.id !== entryId,
+    );
+    try {
+      localStorage.setItem("journalEntries", JSON.stringify(nextEntries));
+    } catch {
+      // Ignore storage errors and proceed with navigation.
+    }
+    router.push("/journal");
+  };
+
+  const handleOpenNavigation = () => {
+    const stops = entry?.stations ?? [];
+    if (stops.length === 0) {
+      alert("등록된 관측소가 없습니다.");
+      return;
+    }
+    const stopParam = stops
+      .map((name) => encodeURIComponent(name))
+      .join("|");
+    router.push(`/navigation?stops=${stopParam}`);
+  };
+
+  const stationPoints: MapPoint[] = useMemo(
+    () =>
+      (entry?.stations ?? [])
+        .map((name) => {
+          const matched = stations.find(
+            (station) => station.name === name,
+          );
+          if (!matched) {
+            return null;
+          }
+          return {
+            id: matched.id,
+            label: matched.name,
+            position: matched.coords,
+            kind: "station",
+          } satisfies MapPoint;
+        })
+        .filter((value): value is MapPoint => value !== null),
+    [entry?.stations],
+  );
+
+  const handleClosePhoto = () => {
+    setActivePhoto(null);
+    setIsPhotoZoomed(false);
+  };
 
   if (!entry) {
     if (!isStorageLoaded || !entryId) {
@@ -83,53 +144,6 @@ export default function JournalDetailPage() {
     );
   }
 
-  const handleDelete = () => {
-    if (!isStoredEntry) {
-      alert("더미 데이터는 삭제할 수 없습니다.");
-      return;
-    }
-    const confirmed = window.confirm("이 일지를 삭제할까요?");
-    if (!confirmed) {
-      return;
-    }
-    const nextEntries = storedEntries.filter(
-      (item) => item.id !== entryId,
-    );
-    try {
-      localStorage.setItem("journalEntries", JSON.stringify(nextEntries));
-    } catch {
-      // Ignore storage errors and proceed with navigation.
-    }
-    router.push("/journal");
-  };
-
-  const handleOpenNavigation = () => {
-    const stops = entry.stations ?? [];
-    if (stops.length === 0) {
-      alert("등록된 관측소가 없습니다.");
-      return;
-    }
-    const stopParam = stops
-      .map((name) => encodeURIComponent(name))
-      .join("|");
-    router.push(`/navigation?stops=${stopParam}`);
-  };
-
-  const stationPoints: MapPoint[] = entry.stations
-    .map((name) => {
-      const matched = stations.find((station) => station.name === name);
-      if (!matched) {
-        return null;
-      }
-      return {
-        id: matched.id,
-        label: matched.name,
-        position: matched.coords,
-        kind: "station",
-      } satisfies MapPoint;
-    })
-    .filter((value): value is MapPoint => value !== null);
-
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
@@ -156,8 +170,8 @@ export default function JournalDetailPage() {
               </div>
             </div>
             <div className="mt-4 space-y-2 rounded-xl border border-slate-100 px-4 py-4 text-sm text-slate-700">
-              {entry.body.map((line) => (
-                <p key={line}>{line}</p>
+              {entry.body.map((line, index) => (
+                <p key={`${line}-${index}`}>{line}</p>
               ))}
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -209,27 +223,13 @@ export default function JournalDetailPage() {
               <p className="text-sm font-semibold text-slate-700">
                 관측소 위치
               </p>
-              <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">
-                <span className="text-slate-400">🔍</span>
-                <input
-                  type="text"
-                  placeholder="관측소 검색(최대 6개)"
-                  className="w-full bg-transparent text-sm text-slate-700 outline-none"
-                />
-              </div>
               <div className="mt-3 space-y-2">
                 {entry.stations.map((item) => (
                   <div
                     key={item}
-                    className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600"
+                    className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600"
                   >
                     <span>{item}</span>
-                    <button
-                      type="button"
-                      className="text-xs text-slate-400"
-                    >
-                      x
-                    </button>
                   </div>
                 ))}
               </div>
@@ -251,10 +251,7 @@ export default function JournalDetailPage() {
       {activePhoto ? (
         <div
           className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/70 p-4"
-          onClick={() => {
-            setActivePhoto(null);
-            setIsPhotoZoomed(false);
-          }}
+          onClick={handleClosePhoto}
           role="dialog"
           aria-modal="true"
         >
@@ -268,10 +265,7 @@ export default function JournalDetailPage() {
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  setActivePhoto(null);
-                  setIsPhotoZoomed(false);
-                }}
+                onClick={handleClosePhoto}
                 className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600"
               >
                 닫기

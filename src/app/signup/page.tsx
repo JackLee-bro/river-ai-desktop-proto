@@ -11,6 +11,8 @@ import {
   type AdminUser,
 } from "../_data/usersStorage";
 
+const AUTH_STORAGE_KEY = "demo-auth";
+
 export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -75,8 +77,9 @@ export default function SignupPage() {
       status: "활성",
     };
     writeStoredUsers([newUser, ...baseUsers]);
+    // TODO: replace with API auth session when available.
     localStorage.setItem(
-      "demo-auth",
+      AUTH_STORAGE_KEY,
       JSON.stringify({
         email: newUser.email,
         role: newUser.role,

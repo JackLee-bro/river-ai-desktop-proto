@@ -25,8 +25,12 @@ export default function AdminStationEditPage() {
     : "/admin/stations";
 
   useEffect(() => {
-    const stored = readStoredStations();
-    setMergedStations(mergeStations(stations, stored));
+    const loadStations = async () => {
+      // TODO: replace with API call when available.
+      const stored = readStoredStations();
+      setMergedStations(mergeStations(stations, stored));
+    };
+    void loadStations();
   }, []);
 
   const station = useMemo(() => {

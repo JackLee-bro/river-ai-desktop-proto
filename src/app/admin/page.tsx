@@ -31,6 +31,7 @@ export default function AdminDashboardPage() {
   const [userCount, setUserCount] = useState(defaultUsers.length);
 
   const refreshCounts = () => {
+    // TODO: replace with API calls when available.
     const storedStations = readStoredStations();
     const mergedStations = mergeStations(stations, storedStations);
     setStationCount(mergedStations.length);

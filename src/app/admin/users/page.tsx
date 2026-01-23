@@ -16,10 +16,16 @@ const roleOptions: UserRole[] = ["관리자", "일반"];
 const SUPER_ADMIN_EMAIL = "riverai@naver.com";
 const STATUS_ACTIVE: UserStatus = "활성";
 const STATUS_SUSPENDED: UserStatus = "정지";
+const AUTH_STORAGE_KEY = "demo-auth";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>(defaultUsers);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [submittedSearchTerm, setSubmittedSearchTerm] = useState("");
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const [hoveredSuggestionIndex, setHoveredSuggestionIndex] = useState(-1);
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
   const [pendingChange, setPendingChange] = useState<{
     id: string;
     nextRole: UserRole;
@@ -37,7 +43,7 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
-    const stored = localStorage.getItem("demo-auth");
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
     if (!stored) {
       setIsSuperAdmin(false);
       return;
@@ -53,6 +59,20 @@ export default function AdminUsersPage() {
   }, []);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    setActiveSuggestionIndex(-1);
+    setHoveredSuggestionIndex(-1);
+    setIsSuggestionOpen(Boolean(debouncedSearchTerm.trim()));
+  }, [debouncedSearchTerm]);
+
+  useEffect(() => {
+    // TODO: replace with API call when available.
     const storedUsers = readStoredUsers();
     if (storedUsers.length > 0) {
       setUsers(storedUsers);
@@ -80,7 +100,7 @@ export default function AdminUsersPage() {
   }, [notice]);
 
   const filteredUsers = useMemo(() => {
-    const normalized = searchTerm.trim().toLowerCase();
+    const normalized = submittedSearchTerm.trim().toLowerCase();
     const list = users.filter((user) => {
       if (!normalized) {
         return true;
@@ -101,7 +121,21 @@ export default function AdminUsersPage() {
       superUser,
       ...list.filter((user) => user !== superUser),
     ];
-  }, [searchTerm, users]);
+  }, [submittedSearchTerm, users]);
+
+  const suggestedUsers = useMemo(() => {
+    const normalized = debouncedSearchTerm.trim().toLowerCase();
+    if (!normalized) {
+      return [];
+    }
+    return users
+      .filter(
+        (user) =>
+          user.email.toLowerCase().includes(normalized) ||
+          user.name.toLowerCase().includes(normalized),
+      )
+      .slice(0, 5);
+  }, [debouncedSearchTerm, users]);
 
   const pendingUser = useMemo(() => {
     if (!pendingChange) {
@@ -186,15 +220,109 @@ export default function AdminUsersPage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <form
           className="flex flex-wrap items-center justify-between gap-3"
-          onSubmit={(event) => event.preventDefault()}
+          onSubmit={(event) => {
+            event.preventDefault();
+            setSubmittedSearchTerm(searchTerm);
+            setIsSuggestionOpen(false);
+          }}
         >
-          <input
-            type="text"
-            placeholder="이메일/이름 검색"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 sm:w-72"
-          />
+          <div className="relative w-full sm:w-72">
+            <input
+              type="text"
+              placeholder="이메일/이름 검색"
+              value={searchTerm}
+              onChange={(event) => {
+                const value = event.target.value;
+                setSearchTerm(value);
+                if (!value.trim()) {
+                  setSubmittedSearchTerm("");
+                }
+                setIsSuggestionOpen(Boolean(value.trim()));
+              }}
+              onKeyDown={(event) => {
+                if (suggestedUsers.length === 0) {
+                  return;
+                }
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setActiveSuggestionIndex((prev) =>
+                    prev < suggestedUsers.length - 1 ? prev + 1 : 0,
+                  );
+                  return;
+                }
+                if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setActiveSuggestionIndex((prev) =>
+                    prev > 0 ? prev - 1 : suggestedUsers.length - 1,
+                  );
+                  return;
+                }
+                if (event.key === "Enter") {
+                  if (activeSuggestionIndex >= 0) {
+                    event.preventDefault();
+                    const selected = suggestedUsers[activeSuggestionIndex];
+                    if (selected) {
+                      const next = selected.email ?? selected.name;
+                      setSearchTerm(next);
+                      setSubmittedSearchTerm(next);
+                      setActiveSuggestionIndex(-1);
+                      setIsSuggestionOpen(false);
+                    }
+                  }
+                }
+                if (event.key === "Escape") {
+                  setActiveSuggestionIndex(-1);
+                  setIsSuggestionOpen(false);
+                }
+              }}
+              className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700"
+            />
+            {isSuggestionOpen ? (
+              <div className="absolute left-0 right-0 top-full z-10 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                {suggestedUsers.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-slate-400">
+                    추천 검색어가 없습니다.
+                  </div>
+                ) : (
+                  <ul className="max-h-56 overflow-auto py-1 text-sm text-slate-700">
+                    {suggestedUsers.map((user, index) => (
+                      <li key={`suggest-${user.id}`}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = user.email ?? user.name;
+                            setSearchTerm(next);
+                            setSubmittedSearchTerm(next);
+                            setActiveSuggestionIndex(-1);
+                            setIsSuggestionOpen(false);
+                          }}
+                          onMouseEnter={() =>
+                            setHoveredSuggestionIndex(index)
+                          }
+                          onMouseLeave={() =>
+                            setHoveredSuggestionIndex(-1)
+                          }
+                          className={
+                            activeSuggestionIndex === index ||
+                            hoveredSuggestionIndex === index
+                              ? "flex w-full items-center justify-between gap-2 bg-slate-50 px-3 py-2 text-left"
+                              : "flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-50"
+                          }
+                        >
+                          <span className="font-medium text-slate-900">
+                            {user.name}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {user.email}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
+          </div>
           <button
             type="submit"
             className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white"

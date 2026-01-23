@@ -23,6 +23,11 @@ const stationCoverImages = [
 
 export default function AdminStationsPage() {
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const [hoveredSuggestionIndex, setHoveredSuggestionIndex] = useState(-1);
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 6;
   const [storedStations, setStoredStations] = useState(stations);
@@ -38,6 +43,19 @@ export default function AdminStationsPage() {
     const stored = readStoredStations();
     setStoredStations(mergeStations(stations, stored));
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    setActiveSuggestionIndex(-1);
+    setHoveredSuggestionIndex(-1);
+    setIsSuggestionOpen(Boolean(debouncedQuery.trim()));
+  }, [debouncedQuery]);
 
   useEffect(() => {
     const highlight = searchParams.get("highlight");
@@ -70,6 +88,8 @@ export default function AdminStationsPage() {
     }
     if (query) {
       setQuery("");
+      setSubmittedQuery("");
+      setIsSuggestionOpen(false);
     }
     const index = storedStations.findIndex(
       (station) => station.id === highlightId,
@@ -95,14 +115,26 @@ export default function AdminStationsPage() {
   }, [highlightId, searchParams]);
 
   const filteredStations = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
+    const keyword = submittedQuery.trim().toLowerCase();
     if (!keyword) {
       return storedStations;
     }
     return storedStations.filter((station) =>
       station.name.toLowerCase().includes(keyword),
     );
-  }, [query, storedStations]);
+  }, [submittedQuery, storedStations]);
+
+  const suggestedStations = useMemo(() => {
+    const keyword = debouncedQuery.trim().toLowerCase();
+    if (!keyword) {
+      return [];
+    }
+    return storedStations
+      .filter((station) =>
+        station.name.toLowerCase().includes(keyword),
+      )
+      .slice(0, 5);
+  }, [debouncedQuery, storedStations]);
 
   const handleDelete = (id: string) => {
     const target = storedStations.find((station) => station.id === id);
@@ -152,24 +184,120 @@ export default function AdminStationsPage() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex w-full gap-3 sm:w-auto">
-            <input
-              type="text"
-              placeholder="관측소 검색"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPage(1);
-              }}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 sm:w-72"
-            />
-            <button
-              type="button"
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-            >
-              검색
-            </button>
-          </div>
+          <form
+            className="flex w-full flex-col gap-2 sm:w-auto"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSubmittedQuery(query);
+              setPage(1);
+              setIsSuggestionOpen(false);
+            }}
+          >
+            <div className="flex w-full gap-3 sm:w-auto">
+              <div className="relative w-full sm:w-72">
+                <input
+                  type="text"
+                  placeholder="관측소 검색"
+                  value={query}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setQuery(value);
+                    if (!value.trim()) {
+                      setSubmittedQuery("");
+                      setPage(1);
+                    }
+                    setIsSuggestionOpen(Boolean(value.trim()));
+                  }}
+                  onKeyDown={(event) => {
+                    if (suggestedStations.length === 0) {
+                      return;
+                    }
+                    if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      setActiveSuggestionIndex((prev) =>
+                        prev < suggestedStations.length - 1 ? prev + 1 : 0,
+                      );
+                      return;
+                    }
+                    if (event.key === "ArrowUp") {
+                      event.preventDefault();
+                      setActiveSuggestionIndex((prev) =>
+                        prev > 0 ? prev - 1 : suggestedStations.length - 1,
+                      );
+                      return;
+                    }
+                    if (event.key === "Enter") {
+                      if (activeSuggestionIndex >= 0) {
+                        event.preventDefault();
+                        const selected =
+                          suggestedStations[activeSuggestionIndex];
+                        if (selected) {
+                          setQuery(selected.name);
+                          setSubmittedQuery(selected.name);
+                          setPage(1);
+                          setActiveSuggestionIndex(-1);
+                          setIsSuggestionOpen(false);
+                        }
+                      }
+                    }
+                    if (event.key === "Escape") {
+                      setActiveSuggestionIndex(-1);
+                      setIsSuggestionOpen(false);
+                    }
+                  }}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700"
+                />
+                {isSuggestionOpen ? (
+                  <div className="absolute left-0 right-0 top-full z-10 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                    {suggestedStations.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-slate-400">
+                        추천 검색어가 없습니다.
+                      </div>
+                    ) : (
+                      <ul className="max-h-56 overflow-auto py-1 text-sm text-slate-700">
+                        {suggestedStations.map((station, index) => (
+                          <li key={`suggest-${station.id}`}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setQuery(station.name);
+                                setSubmittedQuery(station.name);
+                                setPage(1);
+                                setActiveSuggestionIndex(-1);
+                                setIsSuggestionOpen(false);
+                              }}
+                              onMouseEnter={() =>
+                                setHoveredSuggestionIndex(index)
+                              }
+                              onMouseLeave={() =>
+                                setHoveredSuggestionIndex(-1)
+                              }
+                              className={
+                                activeSuggestionIndex === index ||
+                                hoveredSuggestionIndex === index
+                                  ? "flex w-full items-center gap-2 bg-slate-50 px-3 py-2 text-left"
+                                  : "flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
+                              }
+                            >
+                              <span className="font-medium text-slate-900">
+                                {station.name}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <button
+                type="submit"
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                검색
+              </button>
+            </div>
+          </form>
           <div className="flex flex-wrap items-center gap-3">
             <span className="w-fit rounded-full border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500">
               총 {filteredStations.length}개

@@ -30,15 +30,17 @@ const createFallbackStation = (id: string): Station => ({
 
 export default function StationDetailPage() {
   const params = useParams();
-  const stationId = Array.isArray(params?.id)
-    ? params?.id[0]
-    : params?.id;
+  const stationId = Array.isArray(params?.id) ? params?.id[0] : params?.id;
   const [mergedStations, setMergedStations] =
     useState<Station[]>(stations);
 
   useEffect(() => {
-    const stored = readStoredStations();
-    setMergedStations(mergeStations(stations, stored));
+    const loadStations = async () => {
+      // TODO: replace with API call when available.
+      const stored = readStoredStations();
+      setMergedStations(mergeStations(stations, stored));
+    };
+    void loadStations();
   }, []);
 
   const station = useMemo(() => {
@@ -47,16 +49,16 @@ export default function StationDetailPage() {
     if (found) {
       return found;
     }
-    if (stations.length > 0) {
-      return {
-        ...stations[0],
-        id,
-        name: "임시 관측소",
-        address: "더미 데이터입니다.",
-        updatedAt: "2025-03-20 00:00",
-      };
-    }
-    return createFallbackStation(id);
+    const base = stations[0];
+    return base
+      ? {
+          ...base,
+          id,
+          name: "임시 관측소",
+          address: "더미 데이터입니다.",
+          updatedAt: "2025-03-20 00:00",
+        }
+      : createFallbackStation(id);
   }, [mergedStations, stationId]);
 
   const points: MapPoint[] = [

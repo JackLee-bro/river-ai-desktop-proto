@@ -2,45 +2,84 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { journalEntries, type JournalEntry } from "../_data/journals";
 
 export default function JournalPage() {
   const [storedEntries, setStoredEntries] = useState<JournalEntry[]>([]);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const [hoveredSuggestionIndex, setHoveredSuggestionIndex] = useState(-1);
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
   const pageSize = 10;
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isSyncingRef = useRef(false);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("journalEntries");
-      if (!stored) {
+    const loadEntries = async () => {
+      setIsLoading(true);
+      // TODO: replace with API call when available.
+      try {
+        const stored = localStorage.getItem("journalEntries");
+        if (!stored) {
+          setStoredEntries([]);
+          return;
+        }
+        const parsed = JSON.parse(stored) as JournalEntry[];
+        setStoredEntries(parsed);
+      } catch {
         setStoredEntries([]);
-        return;
+      } finally {
+        setIsLoading(false);
       }
-      const parsed = JSON.parse(stored) as JournalEntry[];
-      setStoredEntries(parsed);
-    } catch {
-      setStoredEntries([]);
-    }
+    };
+    void loadEntries();
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    setActiveSuggestionIndex(-1);
+    setHoveredSuggestionIndex(-1);
+    setIsSuggestionOpen(Boolean(debouncedQuery.trim()));
+  }, [debouncedQuery]);
 
   const combinedEntries = useMemo(() => {
     const merged = [...storedEntries, ...journalEntries];
     return merged.sort((a, b) => b.date.localeCompare(a.date));
   }, [storedEntries]);
 
+  const suggestedEntries = useMemo(() => {
+    const keyword = debouncedQuery.trim().toLowerCase();
+    if (!keyword) {
+      return [];
+    }
+    return combinedEntries
+      .filter((entry) =>
+        entry.title.toLowerCase().includes(keyword),
+      )
+      .slice(0, 5);
+  }, [combinedEntries, debouncedQuery]);
+
   const filteredEntries = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
+    const keyword = submittedQuery.trim().toLowerCase();
     if (!keyword) {
       return combinedEntries;
     }
     return combinedEntries.filter((entry) =>
       entry.title.toLowerCase().includes(keyword),
     );
-  }, [combinedEntries, query]);
+  }, [combinedEntries, submittedQuery]);
   const pageCount = Math.max(
     1,
     Math.ceil(filteredEntries.length / pageSize),
@@ -48,8 +87,6 @@ export default function JournalPage() {
   const currentPage = Math.min(page, pageCount);
   const startIndex = (currentPage - 1) * pageSize;
   const entries = filteredEntries.slice(startIndex, startIndex + pageSize);
-
-  const resetPage = () => setPage(1);
 
   useEffect(() => {
     const param = searchParams.get("page");
@@ -59,25 +96,36 @@ export default function JournalPage() {
     }
   }, [searchParams, pageCount]);
 
-  const updatePage = (nextPage: number) => {
+  const updatePage = (nextPage: number, nextQuery = submittedQuery) => {
     const bounded = Math.min(Math.max(nextPage, 1), pageCount);
     setPage(bounded);
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(bounded));
-    if (query.trim()) {
-      params.set("q", query.trim());
+    if (nextQuery.trim()) {
+      params.set("q", nextQuery.trim());
     } else {
       params.delete("q");
     }
+    isSyncingRef.current = true;
     router.replace(`/journal?${params.toString()}`, { scroll: false });
   };
 
   useEffect(() => {
-    const param = searchParams.get("q") ?? "";
-    if (param && param !== query) {
-      setQuery(param);
+    if (isSyncingRef.current) {
+      isSyncingRef.current = false;
+      return;
     }
-  }, [searchParams, query]);
+    const param = searchParams.get("q") ?? "";
+    if (param && param !== submittedQuery) {
+      setQuery(param);
+      setSubmittedQuery(param);
+      return;
+    }
+    if (!param && submittedQuery) {
+      setQuery("");
+      setSubmittedQuery("");
+    }
+  }, [searchParams, submittedQuery]);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
@@ -100,37 +148,121 @@ export default function JournalPage() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex w-full gap-3 sm:w-auto">
-              <input
-                type="text"
-                placeholder="제목, 내용을 입력하세요."
-                value={query}
-                onChange={(event) => {
-                  const nextValue = event.target.value;
-                  setQuery(nextValue);
-                  resetPage();
-                  const params = new URLSearchParams(searchParams.toString());
-                  if (nextValue.trim()) {
-                    params.set("q", nextValue.trim());
-                  } else {
-                    params.delete("q");
-                  }
-                  params.set("page", "1");
-                  router.replace(`/journal?${params.toString()}`, {
-                    scroll: false,
-                  });
-                }}
-                className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 sm:w-96"
-              />
-              <button
-                type="button"
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
-                검색
-              </button>
-            </div>
+            <form
+              className="flex w-full flex-col gap-2 sm:w-auto"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSubmittedQuery(query);
+                updatePage(1, query);
+              }}
+            >
+              <div className="flex w-full gap-3 sm:w-auto">
+                <div className="relative w-full sm:w-96">
+                  <input
+                    type="text"
+                    placeholder="제목을 입력하세요."
+                    value={query}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      setQuery(nextValue);
+                      if (!nextValue.trim()) {
+                        setSubmittedQuery("");
+                        updatePage(1, "");
+                      }
+                      setIsSuggestionOpen(Boolean(nextValue.trim()));
+                    }}
+                    onKeyDown={(event) => {
+                      if (suggestedEntries.length === 0) {
+                        return;
+                      }
+                      if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        setActiveSuggestionIndex((prev) =>
+                          prev < suggestedEntries.length - 1 ? prev + 1 : 0,
+                        );
+                        return;
+                      }
+                      if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        setActiveSuggestionIndex((prev) =>
+                          prev > 0 ? prev - 1 : suggestedEntries.length - 1,
+                        );
+                        return;
+                      }
+                      if (event.key === "Enter") {
+                        if (activeSuggestionIndex >= 0) {
+                          event.preventDefault();
+                          const selected =
+                            suggestedEntries[activeSuggestionIndex];
+                          if (selected) {
+                            setQuery(selected.title);
+                            setSubmittedQuery(selected.title);
+                            updatePage(1, selected.title);
+                            setActiveSuggestionIndex(-1);
+                            setIsSuggestionOpen(false);
+                          }
+                        }
+                      }
+                      if (event.key === "Escape") {
+                        setActiveSuggestionIndex(-1);
+                        setIsSuggestionOpen(false);
+                      }
+                    }}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700"
+                  />
+                  {isSuggestionOpen ? (
+                    <div className="absolute left-0 right-0 top-full z-10 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                      {suggestedEntries.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-slate-400">
+                          추천 검색어가 없습니다.
+                        </div>
+                      ) : (
+                        <ul className="max-h-56 overflow-auto py-1 text-sm text-slate-700">
+                          {suggestedEntries.map((entry, index) => (
+                            <li key={`suggest-${entry.id}`}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setQuery(entry.title);
+                                  setSubmittedQuery(entry.title);
+                                  updatePage(1, entry.title);
+                                  setActiveSuggestionIndex(-1);
+                                  setIsSuggestionOpen(false);
+                                }}
+                                onMouseEnter={() =>
+                                  setHoveredSuggestionIndex(index)
+                                }
+                                onMouseLeave={() =>
+                                  setHoveredSuggestionIndex(-1)
+                                }
+                                className={
+                                  activeSuggestionIndex === index ||
+                                  hoveredSuggestionIndex === index
+                                    ? "flex w-full items-center gap-2 bg-slate-50 px-3 py-2 text-left"
+                                    : "flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
+                                }
+                              >
+                                <span className="font-medium text-slate-900">
+                                  {entry.title}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  검색
+                </button>
+              </div>
+            </form>
             <span className="w-fit rounded-full border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500">
-              총 {filteredEntries.length}건
+              {isLoading ? "불러오는 중" : `총 ${filteredEntries.length}건`}
             </span>
           </div>
         </section>

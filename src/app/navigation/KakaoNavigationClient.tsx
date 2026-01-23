@@ -27,6 +27,38 @@ const createStop = (id: string): Stop => ({
   keyword: "",
 });
 
+const buildStopsFromParam = (param: string) => {
+  const names = param
+    .split("|")
+    .map((value) => {
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    })
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (names.length === 0) {
+    return null;
+  }
+  const limited = names.slice(0, Math.max(0, MAX_STOPS - 1));
+  const startStop = createStop("start");
+  const nextStops = limited.map((name, index) => {
+    const matched = stations.find((station) => station.name === name);
+    const isLast = index === limited.length - 1;
+    return {
+      id: isLast ? "end" : `stop-${index}-${Date.now()}`,
+      keyword: name,
+      placeName: matched?.name ?? name,
+      position: matched
+        ? { lat: matched.coords[0], lng: matched.coords[1] }
+        : undefined,
+    } satisfies Stop;
+  });
+  return [startStop, ...nextStops];
+};
+
 const loadKakaoMapScript = (appKey: string) =>
   new Promise<void>((resolve, reject) => {
     if (typeof window === "undefined") {
@@ -84,35 +116,11 @@ export default function KakaoNavigationClient() {
     if (!param) {
       return;
     }
-    const names = param
-      .split("|")
-      .map((value) => {
-        try {
-          return decodeURIComponent(value);
-        } catch {
-          return value;
-        }
-      })
-      .map((value) => value.trim())
-      .filter(Boolean);
-    if (names.length === 0) {
+    const nextStops = buildStopsFromParam(param);
+    if (!nextStops) {
       return;
     }
-    const limited = names.slice(0, Math.max(0, MAX_STOPS - 1));
-    const startStop = createStop("start");
-    const nextStops = limited.map((name, index) => {
-      const matched = stations.find((station) => station.name === name);
-      const isLast = index === limited.length - 1;
-      return {
-        id: isLast ? "end" : `stop-${index}-${Date.now()}`,
-        keyword: name,
-        placeName: matched?.name ?? name,
-        position: matched
-          ? { lat: matched.coords[0], lng: matched.coords[1] }
-          : undefined,
-      } satisfies Stop;
-    });
-    setStops([startStop, ...nextStops]);
+    setStops(nextStops);
     setActiveMessage("일지에서 선택한 경로를 불러왔습니다.");
   }, [searchParams]);
 
@@ -149,14 +157,15 @@ export default function KakaoNavigationClient() {
   };
 
   const handleSearch = async (stop: Stop) => {
-    if (!stop.keyword.trim()) {
+    const keyword = stop.keyword.trim();
+    if (!keyword) {
       setActiveMessage("검색어를 입력해주세요.");
       return;
     }
 
     if (kakaoReady && placesRef.current) {
       placesRef.current.keywordSearch(
-        stop.keyword.trim(),
+        keyword,
         (data: any, status: any) => {
           if (
             status !== window.kakao.maps.services.Status.OK ||
@@ -188,7 +197,8 @@ export default function KakaoNavigationClient() {
     }
 
     try {
-      const query = encodeURIComponent(stop.keyword.trim());
+      // TODO: replace with API call when available.
+      const query = encodeURIComponent(keyword);
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`,
       );

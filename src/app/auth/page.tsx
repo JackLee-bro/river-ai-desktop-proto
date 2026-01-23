@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { defaultUsers, readStoredUsers } from "../_data/usersStorage";
 
+const AUTH_STORAGE_KEY = "demo-auth";
+
 export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,8 +35,9 @@ export default function AuthPage() {
       const role = isAdminLogin
         ? "관리자"
         : matchedUser?.role ?? "일반";
+      // TODO: replace with API auth session when available.
       localStorage.setItem(
-        "demo-auth",
+        AUTH_STORAGE_KEY,
         JSON.stringify({
           email,
           role,

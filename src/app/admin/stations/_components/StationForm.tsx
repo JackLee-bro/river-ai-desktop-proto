@@ -242,6 +242,7 @@ export default function StationForm({
       note,
       images,
     };
+    // TODO: replace with API call when available.
     saveStoredStation(nextStation);
     router.push(`/admin/stations?highlight=${id}`);
   };
