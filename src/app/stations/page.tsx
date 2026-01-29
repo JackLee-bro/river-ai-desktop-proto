@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { fetchStations, fetchStationsSearch } from "../../lib/api";
+import StationSearch from "./_components/StationSearch";
 
 type StationsPageProps = {
   searchParams?: {
@@ -58,37 +59,7 @@ export default async function StationsPage({ searchParams }: StationsPageProps) 
           </p>
         </header>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <form action="/stations" method="get" className="flex gap-2">
-            <input
-              type="text"
-              name="keyword"
-              placeholder="관측소 검색"
-              defaultValue={keyword}
-              className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-            />
-            <input type="hidden" name="size" value={size} />
-            <button
-              type="submit"
-              className="h-10 whitespace-nowrap rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              검색
-            </button>
-            {hasKeyword ? (
-              <Link
-                href="/stations"
-                className="inline-flex h-10 items-center whitespace-nowrap rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600"
-              >
-                초기화
-              </Link>
-            ) : null}
-          </form>
-          {hasKeyword ? (
-            <p className="mt-2 text-xs text-slate-500">
-              "{keyword}" 검색 결과
-            </p>
-          ) : null}
-        </section>
+        <StationSearch initialKeyword={keyword} size={size} />
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           {data.stations.length === 0 ? (
@@ -97,7 +68,7 @@ export default async function StationsPage({ searchParams }: StationsPageProps) 
             </p>
           ) : (
             <ul className="divide-y divide-slate-100">
-              {data.stations.map((station) => {
+              {data.stations.map((station, index) => {
                 const codeNumber =
                   station.codeNumber ??
                   (station as { code_number?: string | number }).code_number ??
@@ -108,8 +79,12 @@ export default async function StationsPage({ searchParams }: StationsPageProps) 
                   station.name ??
                   (station as { station_name?: string }).station_name ??
                   "-";
+                const key =
+                  station.id ??
+                  codeNumberValue ??
+                  `${stationName}-${station.address ?? "station"}-${index}`;
                 return (
-                  <li key={station.id} className="py-3">
+                  <li key={String(key)} className="py-3">
                     {codeNumberValue ? (
                       <Link
                         href={`/stations/${codeNumberValue}`}

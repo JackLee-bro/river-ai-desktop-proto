@@ -6,6 +6,12 @@ export type JournalEntry = {
   summary: string;
   body: string[];
   stations: string[];
+  stationMeta?: {
+    id?: string;
+    name: string;
+    coords: [number, number];
+    codeNumber?: string | number;
+  }[];
   photos: { id: string; label: string; url?: string }[];
 };
 

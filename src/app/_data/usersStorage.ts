@@ -1,13 +1,13 @@
 export type AdminUser = {
   id: string;
-  email: string;
+  userId: string;
   name: string;
   phone?: string;
   team?: string;
   department?: string;
   password?: string;
   role: "관리자" | "일반";
-  status: "활성" | "정지";
+  status: "승인대기" | "활성" | "정지" | "거절";
 };
 
 const STORAGE_KEY = "demo-users";
@@ -16,7 +16,7 @@ const USERS_UPDATED_EVENT = "users-updated";
 export const defaultUsers: AdminUser[] = [
   {
     id: "user-0",
-    email: "river@naver.com",
+    userId: "river",
     name: "리버",
     role: "일반",
     status: "활성",
@@ -24,70 +24,70 @@ export const defaultUsers: AdminUser[] = [
   },
   {
     id: "user-1",
-    email: "riverai@naver.com",
+    userId: "riverai",
     name: "리버",
     role: "관리자",
     status: "활성",
   },
   {
     id: "user-2",
-    email: "minsukim@sample.com",
+    userId: "minsukim",
     name: "김민수",
     role: "관리자",
     status: "활성",
   },
   {
     id: "user-3",
-    email: "seoyeon.lee@sample.com",
+    userId: "seoyeonlee",
     name: "이서연",
     role: "일반",
     status: "활성",
   },
   {
     id: "user-4",
-    email: "jiho.park@sample.com",
+    userId: "jihopark",
     name: "박지호",
     role: "일반",
     status: "활성",
   },
   {
     id: "user-5",
-    email: "areum.choi@sample.com",
+    userId: "areumchoi",
     name: "최아름",
     role: "일반",
     status: "활성",
   },
   {
     id: "user-6",
-    email: "seokjun.han@sample.com",
+    userId: "seokjunhan",
     name: "한석준",
     role: "일반",
     status: "활성",
   },
   {
     id: "user-7",
-    email: "yunha.kim@sample.com",
+    userId: "yunhakim",
     name: "윤하",
     role: "일반",
     status: "활성",
   },
   {
     id: "user-8",
-    email: "mirae.song@sample.com",
+    userId: "miraesong",
     name: "송미래",
     role: "관리자",
     status: "활성",
   },
   {
     id: "user-9",
-    email: "hojun.seo@sample.com",
+    userId: "hojunseo",
     name: "서호준",
     role: "일반",
     status: "활성",
   },
   {
     id: "user-10",
-    email: "jinwoo.park@sample.com",
+    userId: "jinwoopark",
     name: "진우",
     role: "일반",
     status: "정지",
@@ -103,8 +103,14 @@ export const readStoredUsers = (): AdminUser[] => {
     if (!stored) {
       return [];
     }
-    const parsed = JSON.parse(stored) as AdminUser[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(stored) as (AdminUser & { userid?: string })[];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.map((user) => ({
+      ...user,
+      userId: user.userId ?? user.userid ?? "",
+    }));
   } catch {
     return [];
   }

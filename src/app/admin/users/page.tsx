@@ -13,9 +13,8 @@ type UserRole = AdminUser["role"];
 type UserStatus = AdminUser["status"];
 
 const roleOptions: UserRole[] = ["관리자", "일반"];
-const SUPER_ADMIN_EMAIL = "riverai@naver.com";
-const STATUS_ACTIVE: UserStatus = "활성";
-const STATUS_SUSPENDED: UserStatus = "정지";
+const statusOptions: UserStatus[] = ["승인대기", "활성", "정지", "거절"];
+const SUPER_ADMIN_USER_ID = "riverai";
 const AUTH_STORAGE_KEY = "demo-auth";
 
 export default function AdminUsersPage() {
@@ -49,9 +48,9 @@ export default function AdminUsersPage() {
       return;
     }
     try {
-      const parsed = JSON.parse(stored) as { email?: string };
+      const parsed = JSON.parse(stored) as { userId?: string };
       setIsSuperAdmin(
-        (parsed.email ?? "").toLowerCase() === SUPER_ADMIN_EMAIL,
+        (parsed.userId ?? "").toLowerCase() === SUPER_ADMIN_USER_ID,
       );
     } catch {
       setIsSuperAdmin(false);
@@ -106,12 +105,12 @@ export default function AdminUsersPage() {
         return true;
       }
       return (
-        user.email.toLowerCase().includes(normalized) ||
+        user.userId.toLowerCase().includes(normalized) ||
         user.name.toLowerCase().includes(normalized)
       );
     });
     const superIndex = list.findIndex(
-      (user) => user.email.toLowerCase() === SUPER_ADMIN_EMAIL,
+      (user) => user.userId.toLowerCase() === SUPER_ADMIN_USER_ID,
     );
     if (superIndex < 0) {
       return list;
@@ -131,7 +130,7 @@ export default function AdminUsersPage() {
     return users
       .filter(
         (user) =>
-          user.email.toLowerCase().includes(normalized) ||
+          user.userId.toLowerCase().includes(normalized) ||
           user.name.toLowerCase().includes(normalized),
       )
       .slice(0, 5);
@@ -166,22 +165,14 @@ export default function AdminUsersPage() {
       ),
     );
     setPendingChange(null);
-    setNotice("변경되었습니다.");
+    setNotice(`권한이 ${toRole}(으)로 변경되었습니다.`);
   };
 
-  const toggleStatus = (id: string) => {
+  const handleStatusChange = (id: string, status: UserStatus) => {
     if (!isSuperAdmin) {
       return;
     }
-    const target = users.find((user) => user.id === id);
-    if (!target) {
-      return;
-    }
-    const nextStatus =
-      target.status === STATUS_ACTIVE
-        ? STATUS_SUSPENDED
-        : STATUS_ACTIVE;
-    setPendingStatusChange({ id, nextStatus });
+    setPendingStatusChange({ id, nextStatus: status });
   };
 
   const confirmStatusChange = () => {
@@ -198,7 +189,7 @@ export default function AdminUsersPage() {
       ),
     );
     setPendingStatusChange(null);
-    setNotice("변경되었습니다.");
+    setNotice(`상태가 ${nextStatus}(으)로 변경되었습니다.`);
   };
 
   return (
@@ -229,7 +220,7 @@ export default function AdminUsersPage() {
           <div className="relative w-full sm:w-72">
             <input
               type="text"
-              placeholder="이메일/이름 검색"
+              placeholder="아이디/이름 검색"
               value={searchTerm}
               onChange={(event) => {
                 const value = event.target.value;
@@ -262,7 +253,7 @@ export default function AdminUsersPage() {
                     event.preventDefault();
                     const selected = suggestedUsers[activeSuggestionIndex];
                     if (selected) {
-                      const next = selected.email ?? selected.name;
+                      const next = selected.userId ?? selected.name;
                       setSearchTerm(next);
                       setSubmittedSearchTerm(next);
                       setActiveSuggestionIndex(-1);
@@ -290,7 +281,7 @@ export default function AdminUsersPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const next = user.email ?? user.name;
+                            const next = user.userId ?? user.name;
                             setSearchTerm(next);
                             setSubmittedSearchTerm(next);
                             setActiveSuggestionIndex(-1);
@@ -313,7 +304,7 @@ export default function AdminUsersPage() {
                             {user.name}
                           </span>
                           <span className="text-xs text-slate-400">
-                            {user.email}
+                            {user.userId}
                           </span>
                         </button>
                       </li>
@@ -333,7 +324,7 @@ export default function AdminUsersPage() {
 
         <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
           <div className="grid grid-cols-[220px_minmax(0,1fr)_140px_120px] gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            <span>이메일</span>
+            <span>아이디</span>
             <span>이름</span>
             <span>권한</span>
             <span>상태</span>
@@ -344,11 +335,11 @@ export default function AdminUsersPage() {
               className="grid grid-cols-[220px_minmax(0,1fr)_140px_120px] items-center gap-2 border-b border-slate-100 px-4 py-3 text-sm text-slate-700 last:border-b-0"
             >
               <span className="truncate font-medium text-slate-900">
-                {user.email}
+                {user.userId}
               </span>
               <span className="truncate text-slate-500">{user.name}</span>
               <span>
-                {user.email.toLowerCase() === SUPER_ADMIN_EMAIL ? (
+                {user.userId.toLowerCase() === SUPER_ADMIN_USER_ID ? (
                   <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                     슈퍼관리자
                   </span>
@@ -373,18 +364,29 @@ export default function AdminUsersPage() {
                 )}
               </span>
               <span>
-                <button
-                  type="button"
-                  onClick={() => toggleStatus(user.id)}
-                  disabled={!isSuperAdmin}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed ${
-                    user.status === STATUS_ACTIVE
-                      ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                      : "bg-rose-50 text-rose-600 hover:bg-rose-100"
-                  } disabled:bg-slate-100 disabled:text-slate-400`}
-                >
-                  {user.status}
-                </button>
+                {user.userId.toLowerCase() === SUPER_ADMIN_USER_ID ? (
+                  <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    {user.status}
+                  </span>
+                ) : (
+                  <select
+                    value={user.status}
+                    onChange={(event) =>
+                      handleStatusChange(
+                        user.id,
+                        event.currentTarget.value as UserStatus,
+                      )
+                    }
+                    disabled={!isSuperAdmin}
+                    className="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                  >
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </span>
             </div>
           ))}
@@ -401,7 +403,7 @@ export default function AdminUsersPage() {
               권한 변경 확인
             </h3>
             <p className="mt-3 text-sm text-slate-600">
-              {pendingUser.name} ({pendingUser.email})의 권한을
+              {pendingUser.name} ({pendingUser.userId})의 권한을
               <span className="font-semibold text-slate-900">
                 {" "}
                 {pendingUser.role}
@@ -439,28 +441,14 @@ export default function AdminUsersPage() {
               상태 변경 확인
             </h3>
             <p className="mt-3 text-sm text-slate-600">
-              {pendingStatusUser.name} ({pendingStatusUser.email})의
+              {pendingStatusUser.name} ({pendingStatusUser.userId})의
               상태를
-              <span
-                className={`font-semibold ${
-                  pendingStatusUser.status === STATUS_ACTIVE
-                    ? "text-emerald-600"
-                    : "text-rose-600"
-                }`}
-              >
-                {" "}
-                {pendingStatusUser.status}
+              <span className="font-semibold text-slate-900">
+                {" "}{pendingStatusUser.status}
               </span>
               에서
-              <span
-                className={`font-semibold ${
-                  pendingStatusChange.nextStatus === STATUS_ACTIVE
-                    ? "text-emerald-600"
-                    : "text-rose-600"
-                }`}
-              >
-                {" "}
-                {pendingStatusChange.nextStatus}
+              <span className="font-semibold text-slate-900">
+                {" "}{pendingStatusChange.nextStatus}
               </span>
               (으)로 변경할까요?
             </p>

@@ -15,7 +15,7 @@ type Profile = {
   name: string;
   team: string;
   department: string;
-  email: string;
+  userId: string;
   phone: string;
 };
 
@@ -23,7 +23,7 @@ const defaultProfile: Profile = {
   name: "홍길동",
   team: "수문조사팀",
   department: "운영",
-  email: "riverai@naver.com",
+  userId: "riverai",
   phone: "010-1111-2222",
 };
 
@@ -31,6 +31,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(defaultProfile);
   const [status, setStatus] = useState<"idle" | "saved">("idle");
   const [isEditing, setIsEditing] = useState(false);
+  const [isPasswordEditing, setIsPasswordEditing] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -48,15 +49,15 @@ export default function ProfilePage() {
       return;
     }
     try {
-      const parsed = JSON.parse(stored) as { email?: string };
-      const email = parsed.email ?? defaultProfile.email;
+      const parsed = JSON.parse(stored) as { userId?: string };
+      const userId = parsed.userId ?? defaultProfile.userId;
       const storedUsers = readStoredUsers();
       const matched = storedUsers.find(
-        (user) => user.email.toLowerCase() === email.toLowerCase(),
+        (user) => user.userId.toLowerCase() === userId.toLowerCase(),
       );
       setProfile((prev) => ({
         ...prev,
-        email,
+        userId,
         name: matched?.name ?? prev.name,
         team: matched?.team ?? prev.team,
         department: matched?.department ?? prev.department,
@@ -76,7 +77,7 @@ export default function ProfilePage() {
     const baseUsers =
       storedUsers.length > 0 ? storedUsers : defaultUsers;
     const nextUsers = baseUsers.map((user) =>
-      user.email.toLowerCase() === profile.email.toLowerCase()
+      user.userId.toLowerCase() === profile.userId.toLowerCase()
         ? {
           ...user,
           name: profile.name,
@@ -89,12 +90,12 @@ export default function ProfilePage() {
     if (
       !nextUsers.some(
         (user) =>
-          user.email.toLowerCase() === profile.email.toLowerCase(),
+          user.userId.toLowerCase() === profile.userId.toLowerCase(),
       )
     ) {
       nextUsers.unshift({
         id: `user-${Date.now()}`,
-        email: profile.email,
+        userId: profile.userId,
         name: profile.name,
         team: profile.team,
         department: profile.department,
@@ -139,14 +140,14 @@ export default function ProfilePage() {
       storedUsers.length > 0 ? storedUsers : defaultUsers;
     const matched = baseUsers.find(
       (user) =>
-        user.email.toLowerCase() === profile.email.toLowerCase(),
+        user.userId.toLowerCase() === profile.userId.toLowerCase(),
     );
     if (!matched || matched.password !== currentPassword) {
       setPasswordError("현재 비밀번호가 올바르지 않습니다.");
       return;
     }
     const nextUsers = baseUsers.map((user) =>
-      user.email.toLowerCase() === profile.email.toLowerCase()
+      user.userId.toLowerCase() === profile.userId.toLowerCase()
         ? { ...user, password: nextPassword }
         : user,
     );
@@ -157,7 +158,12 @@ export default function ProfilePage() {
     setConfirmPassword("");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/members/logout", { method: "POST" });
+    } catch {
+      // Ignore API logout errors for demo session cleanup.
+    }
     localStorage.removeItem(AUTH_STORAGE_KEY);
     setLogoutStatus("showing");
     setTimeout(() => {
@@ -233,15 +239,15 @@ export default function ProfilePage() {
               />
             </label>
             <label className="block text-xs font-semibold text-slate-500">
-              메일
+              아이디
               <input
-                type="email"
-                value={profile.email}
-                disabled={!isEditing}
+                type="text"
+                value={profile.userId}
+                disabled
                 onChange={(event) =>
                   setProfile((prev) => ({
                     ...prev,
-                    email: event.target.value,
+                    userId: event.target.value,
                   }))
                 }
                 className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 disabled:bg-slate-100"
@@ -276,6 +282,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => {
                     setIsEditing(true);
+                    setIsPasswordEditing(false);
                     setPasswordError("");
                     setPasswordSaved(false);
                     setStatus("idle");
@@ -291,6 +298,7 @@ export default function ProfilePage() {
                   onClick={() => {
                     loadProfile();
                     setIsEditing(false);
+                    setIsPasswordEditing(false);
                     setPasswordError("");
                     setPasswordSaved(false);
                     setCurrentPassword("");
@@ -302,6 +310,17 @@ export default function ProfilePage() {
                   취소
                 </button>
               ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPasswordEditing((prev) => !prev);
+                  setPasswordError("");
+                  setPasswordSaved(false);
+                }}
+                className="w-full max-w-[200px] rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700"
+              >
+                비밀번호 변경
+              </button>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -316,7 +335,7 @@ export default function ProfilePage() {
               )}
             </div>
           </form>
-          {isEditing ? (
+          {isPasswordEditing ? (
             <div className="mt-8 border-t border-slate-200 pt-6">
               <h2 className="text-base font-semibold text-slate-900">
                 비밀번호 변경

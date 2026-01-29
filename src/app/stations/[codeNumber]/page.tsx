@@ -1,11 +1,32 @@
 import Link from "next/link";
 
 import { fetchStationDetail } from "../../../lib/api";
+import StationAdminActions from "../_components/StationAdminActions";
+import StationNoticeComments from "../_components/StationNoticeComments";
+
+const API_BASE_URL =
+  process.env.API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "";
 
 type StationDetailPageProps = {
   params: {
     codeNumber: string;
   };
+};
+
+const buildPhotoUrl = (url: string) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  if (!API_BASE_URL) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return `${API_BASE_URL}${url}`;
+  }
+  return `${API_BASE_URL}/${url}`;
 };
 
 export default async function StationDetailPage({
@@ -61,12 +82,22 @@ export default async function StationDetailPage({
     <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
         <header className="rounded-2xl bg-white p-5 shadow-sm">
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {station.stationName ?? station.name ?? "관측소 상세"}
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            코드번호: {station.codeNumber ?? codeNumber}
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">
+                {station.stationName ?? station.name ?? "관측소 상세"}
+              </h1>
+              <p className="mt-2 text-sm text-slate-500">
+                코드번호: {station.codeNumber ?? codeNumber}
+              </p>
+            </div>
+            <div className="sm:pt-1">
+              <StationAdminActions
+                codeNumber={String(station.codeNumber ?? codeNumber)}
+                stationName={station.stationName ?? station.name ?? null}
+              />
+            </div>
+          </div>
         </header>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -187,6 +218,40 @@ export default async function StationDetailPage({
             </div>
           </dl>
         </section>
+
+        {station.photos && station.photos.length > 0 ? (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-700">현장 사진</h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {station.photos.map((photo, index) => {
+                const src = buildPhotoUrl(photo.url);
+                return (
+                  <figure
+                    key={`${photo.url}-${photo.sortOrder ?? index}`}
+                    className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50"
+                  >
+                    <img
+                      src={src}
+                      alt={photo.caption ?? station.stationName ?? "관측소 사진"}
+                      className="h-48 w-full object-cover"
+                      loading="lazy"
+                    />
+                    {photo.caption ? (
+                      <figcaption className="px-3 py-2 text-xs text-slate-500">
+                        {photo.caption}
+                      </figcaption>
+                    ) : null}
+                  </figure>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        <StationNoticeComments
+          stationCode={String(station.codeNumber ?? codeNumber)}
+          stationName={station.stationName ?? station.name ?? null}
+        />
 
         <Link
           href="/stations"

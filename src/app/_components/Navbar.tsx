@@ -11,7 +11,7 @@ export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const superAdminEmail = "riverai@naver.com";
+  const superAdminUserId = "riverai";
 
   useEffect(() => {
     const stored = localStorage.getItem("demo-auth");
@@ -23,15 +23,15 @@ export default function Navbar() {
     setIsLoggedIn(true);
     try {
       const parsed = JSON.parse(stored) as {
-        email?: string;
+        userId?: string;
         role?: string;
       };
-      const email = (parsed.email ?? "").toLowerCase();
-      if (!email) {
+      const userId = (parsed.userId ?? "").toLowerCase();
+      if (!userId) {
         setIsAdmin(false);
         return;
       }
-      if (email === superAdminEmail) {
+      if (userId === superAdminUserId) {
         setIsAdmin(true);
         return;
       }
@@ -39,7 +39,7 @@ export default function Navbar() {
       const baseUsers =
         storedUsers.length > 0 ? storedUsers : defaultUsers;
       const matched = baseUsers.find(
-        (user) => user.email.toLowerCase() === email,
+        (user) => user.userId.toLowerCase() === userId,
       );
       const role = matched?.role ?? parsed.role ?? "";
       setIsAdmin(role === "관리자");
@@ -48,7 +48,12 @@ export default function Navbar() {
     }
   }, [pathname]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/members/logout", { method: "POST" });
+    } catch {
+      // Ignore API logout errors for demo session cleanup.
+    }
     localStorage.removeItem("demo-auth");
     setIsLoggedIn(false);
     setIsAdmin(false);
@@ -89,7 +94,7 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <Link href="/auth" className="text-white">
+            <Link href="/login" className="text-white">
               로그인/회원가입
             </Link>
           )}

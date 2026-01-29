@@ -1,6 +1,6 @@
 "use client";
 
-import StationForm from "../_components/StationForm";
+import Link from "next/link";
 
 export default function AdminStationNewPage() {
   return (
@@ -10,11 +10,15 @@ export default function AdminStationNewPage() {
           관측소 등록
         </h1>
         <p className="mt-2 text-sm text-slate-500">
-          신규 관측소 정보를 입력하고 등록하세요.
+          관측소 등록 기능은 준비 중입니다.
         </p>
       </header>
-
-      <StationForm mode="new" />
+      <Link
+        href="/admin/stations"
+        className="w-fit rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600"
+      >
+        관측소 목록으로
+      </Link>
     </main>
   );
 }

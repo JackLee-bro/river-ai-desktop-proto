@@ -24,6 +24,11 @@ export type Station = {
   distFromMouthOrConfluence?: string;
   locationNote?: string;
   photoUrl?: string;
+  photos?: {
+    url: string;
+    caption?: string | null;
+    sortOrder?: number | null;
+  }[];
   updatedAt?: string;
 };
 

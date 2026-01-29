@@ -104,8 +104,8 @@ export default function StationForm({
     setTransferMethod(
       initialStation.transferMethod ?? DEFAULT_TRANSFER_METHOD,
     );
-    setLatitude(initialStation.coords[0]?.toString() ?? "");
-    setLongitude(initialStation.coords[1]?.toString() ?? "");
+    setLatitude(initialStation.coords?.[0]?.toString() ?? "");
+    setLongitude(initialStation.coords?.[1]?.toString() ?? "");
     setZeroElevation(
       initialStation.zeroElevation ?? DEFAULT_ZERO_ELEVATION,
     );

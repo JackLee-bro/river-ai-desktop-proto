@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import {
+  AttributionControl,
   CircleMarker,
   MapContainer,
   Marker,
@@ -23,8 +24,10 @@ type MapViewProps = {
 };
 
 const DEFAULT_CENTER: [number, number] = [35.1796, 129.0756];
+const VWORLD_KEY = process.env.NEXT_PUBLIC_VWORLD_KEY ?? "";
+const VWORLD_TILE_URL = `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Base/{z}/{y}/{x}.png`;
 
-const createStopIcon = (label: string, badge: string) =>
+const createStopIcon = (label: string, badge?: string) =>
   L.divIcon({
     className: "",
     html: `
@@ -32,9 +35,10 @@ const createStopIcon = (label: string, badge: string) =>
         <div style="background:rgba(255,255,255,0.95);border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:4px 8px;font-size:11px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.12);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
           ${label}
         </div>
+        ${badge ? `
         <div style="margin-top:4px;background:rgba(0,0,0,0.55);color:#fff;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;">
           ${badge}
-        </div>
+        </div>` : ""}
         <div style="margin-top:2px;font-size:24px;line-height:1;">📍</div>
       </div>
     `,
@@ -75,11 +79,13 @@ export default function MapView({ points, height = "100%" }: MapViewProps) {
         center={DEFAULT_CENTER}
         zoom={12}
         scrollWheelZoom
+        attributionControl={false}
         style={{ height: "100%", width: "100%" }}
       >
+        <AttributionControl prefix="" position="bottomright" />
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
+          url={VWORLD_TILE_URL}
+          attribution="VWorld"
         />
         <CircleMarker
           center={DEFAULT_CENTER}
@@ -91,14 +97,7 @@ export default function MapView({ points, height = "100%" }: MapViewProps) {
           }}
         />
         {points.map((point, index) => {
-          const badge =
-            points.length === 1
-              ? "관측소"
-              : index === 0
-                ? "출발"
-                : index === points.length - 1
-                  ? "도착"
-                  : `경유${index}`;
+          const badge = undefined;
           return (
             <Marker
               key={point.id}

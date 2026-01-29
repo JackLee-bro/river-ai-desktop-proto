@@ -13,7 +13,7 @@ export type Station = {
   observationMethod?: string;
   transferMethod?: string;
   updatedAt: string;
-  coords: [number, number];
+  coords?: [number, number];
   zeroElevation?: string;
   benchmarkElevation?: string;
   maxStage?: string;
@@ -33,7 +33,6 @@ export const stations: Station[] = [
     manager: "김해 지점",
     phone: "055-310-2200",
     updatedAt: "2025-03-20 11:30",
-    coords: [35.2432, 128.9118],
     images: [
       {
         id: "jeongcheon-01",
@@ -75,7 +74,6 @@ export const stations: Station[] = [
     manager: "해운대 지점",
     phone: "051-410-2024",
     updatedAt: "2025-03-20 10:12",
-    coords: [35.1631, 129.1635],
     images: [
       { id: "overview", label: "관측소 전경" },
       { id: "water-gauge", label: "수위계" },
@@ -93,7 +91,6 @@ export const stations: Station[] = [
     manager: "수영 지점",
     phone: "051-210-4221",
     updatedAt: "2025-03-20 09:45",
-    coords: [35.1534, 129.1193],
     images: [
       { id: "overview", label: "관측소 전경" },
       { id: "water-gauge", label: "수위계" },
@@ -111,7 +108,6 @@ export const stations: Station[] = [
     manager: "사상 지점",
     phone: "051-410-7440",
     updatedAt: "2025-03-19 18:10",
-    coords: [35.1627, 128.9823],
     images: [
       { id: "overview", label: "관측소 전경" },
       { id: "water-gauge", label: "수위계" },
@@ -129,7 +125,6 @@ export const stations: Station[] = [
     manager: "강서 지점",
     phone: "051-230-1155",
     updatedAt: "2025-03-20 08:30",
-    coords: [35.2093, 128.9719],
     images: [
       { id: "overview", label: "관측소 전경" },
       { id: "water-gauge", label: "수위계" },
@@ -147,7 +142,6 @@ export const stations: Station[] = [
     manager: "기장 지점",
     phone: "051-981-1820",
     updatedAt: "2025-03-19 23:05",
-    coords: [35.2444, 129.2226],
     images: [
       { id: "overview", label: "관측소 전경" },
       { id: "water-gauge", label: "수위계" },
@@ -165,7 +159,6 @@ export const stations: Station[] = [
     manager: "남구 지점",
     phone: "051-440-7720",
     updatedAt: "2025-03-20 11:02",
-    coords: [35.1365, 129.0829],
     images: [
       { id: "overview", label: "관측소 전경" },
       { id: "water-gauge", label: "수위계" },

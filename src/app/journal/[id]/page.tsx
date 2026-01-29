@@ -79,32 +79,49 @@ export default function JournalDetailPage() {
       alert("등록된 관측소가 없습니다.");
       return;
     }
+    if (entry?.stationMeta && entry.stationMeta.length > 0) {
+      try {
+        localStorage.setItem(
+          "navigation-station-meta",
+          JSON.stringify(entry.stationMeta),
+        );
+      } catch {
+        // Ignore storage errors.
+      }
+    }
     const stopParam = stops
       .map((name) => encodeURIComponent(name))
       .join("|");
     router.push(`/navigation?stops=${stopParam}`);
   };
 
-  const stationPoints: MapPoint[] = useMemo(
-    () =>
-      (entry?.stations ?? [])
-        .map((name) => {
-          const matched = stations.find(
-            (station) => station.name === name,
-          );
-          if (!matched) {
-            return null;
-          }
-          return {
-            id: matched.id,
-            label: matched.name,
-            position: matched.coords,
-            kind: "station",
-          } satisfies MapPoint;
-        })
-        .filter((value): value is MapPoint => value !== null),
-    [entry?.stations],
-  );
+  const stationPoints: MapPoint[] = useMemo(() => {
+    if (!entry) {
+      return [];
+    }
+    if (entry.stationMeta && entry.stationMeta.length > 0) {
+      return entry.stationMeta.map((meta) => ({
+        id: String(meta.id ?? meta.codeNumber ?? meta.name),
+        label: meta.name,
+        position: meta.coords,
+        kind: "station",
+      }));
+    }
+    return (entry.stations ?? [])
+      .map((name) => {
+        const matched = stations.find((station) => station.name === name);
+        if (!matched?.coords) {
+          return null;
+        }
+        return {
+          id: matched.id,
+          label: matched.name,
+          position: matched.coords,
+          kind: "station",
+        } satisfies MapPoint;
+      })
+      .filter((value): value is MapPoint => value !== null);
+  }, [entry]);
 
   const handleClosePhoto = () => {
     setActivePhoto(null);

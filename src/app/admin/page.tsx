@@ -3,11 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { stations } from "../_data/stations";
-import {
-  mergeStations,
-  readStoredStations,
-} from "../_data/stationsStorage";
 import {
   defaultUsers,
   readStoredUsers,
@@ -27,14 +22,23 @@ const quickLinks = [
 ];
 
 export default function AdminDashboardPage() {
-  const [stationCount, setStationCount] = useState(stations.length);
+  const [stationCount, setStationCount] = useState(0);
   const [userCount, setUserCount] = useState(defaultUsers.length);
 
-  const refreshCounts = () => {
-    // TODO: replace with API calls when available.
-    const storedStations = readStoredStations();
-    const mergedStations = mergeStations(stations, storedStations);
-    setStationCount(mergedStations.length);
+  const refreshCounts = async () => {
+    try {
+      const response = await fetch("/api/stations?page=1&size=1");
+      if (response.ok) {
+        const data = (await response.json()) as {
+          total?: number;
+          stations?: unknown[];
+        };
+        const list = Array.isArray(data.stations) ? data.stations : [];
+        setStationCount(data.total ?? list.length);
+      }
+    } catch {
+      // Ignore station count errors.
+    }
     const storedUsers = readStoredUsers();
     setUserCount(
       storedUsers.length > 0 ? storedUsers.length : defaultUsers.length,
@@ -42,24 +46,19 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    refreshCounts();
+    void refreshCounts();
     const handleStorage = (event: StorageEvent) => {
       if (
-        event.key === "demo-stations" ||
-        event.key === "demo-stations-deleted" ||
         event.key === "demo-users"
       ) {
-        refreshCounts();
+        void refreshCounts();
       }
     };
-    const handleStationsUpdated = () => refreshCounts();
-    const handleUsersUpdated = () => refreshCounts();
+    const handleUsersUpdated = () => void refreshCounts();
     window.addEventListener("storage", handleStorage);
-    window.addEventListener("stations-updated", handleStationsUpdated);
     window.addEventListener("users-updated", handleUsersUpdated);
     return () => {
       window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("stations-updated", handleStationsUpdated);
       window.removeEventListener("users-updated", handleUsersUpdated);
     };
   }, []);

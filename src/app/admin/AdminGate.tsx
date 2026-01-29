@@ -9,7 +9,7 @@ type AdminGateProps = {
   children: React.ReactNode;
 };
 
-const ADMIN_EMAIL = "riverai@naver.com";
+const ADMIN_USER_ID = "riverai";
 
 export default function AdminGate({ children }: AdminGateProps) {
   const router = useRouter();
@@ -20,19 +20,19 @@ export default function AdminGate({ children }: AdminGateProps) {
     try {
       const stored = localStorage.getItem("demo-auth");
       const parsed = stored
-        ? (JSON.parse(stored) as { email?: string; role?: string })
+        ? (JSON.parse(stored) as { userId?: string; role?: string })
         : null;
-      const email = parsed?.email?.toLowerCase() ?? "";
-      if (!email) {
+      const userId = (parsed?.userId ?? "").toLowerCase();
+      if (!userId) {
         setIsAllowed(false);
         sessionStorage.setItem(
           "admin-auth-error",
           "관리자 권한이 필요합니다. 관리자 계정으로 로그인해주세요.",
         );
-        router.replace("/auth");
+        router.replace("/login");
         return;
       }
-      if (email === ADMIN_EMAIL) {
+      if (userId === ADMIN_USER_ID) {
         setIsAllowed(true);
         return;
       }
@@ -40,7 +40,7 @@ export default function AdminGate({ children }: AdminGateProps) {
       const baseUsers =
         storedUsers.length > 0 ? storedUsers : defaultUsers;
       const matched = baseUsers.find(
-        (user) => user.email.toLowerCase() === email,
+        (user) => user.userId.toLowerCase() === userId,
       );
       const role = matched?.role ?? parsed?.role ?? "";
       if (role === "관리자") {
@@ -52,14 +52,14 @@ export default function AdminGate({ children }: AdminGateProps) {
         "admin-auth-error",
         "관리자 권한이 필요합니다. 관리자 계정으로 로그인해주세요.",
       );
-      router.replace("/auth");
+      router.replace("/login");
     } catch {
       setIsAllowed(false);
       sessionStorage.setItem(
         "admin-auth-error",
         "세션이 만료되었습니다. 다시 로그인해주세요.",
       );
-      router.replace("/auth");
+      router.replace("/login");
     } finally {
       setChecked(true);
     }
